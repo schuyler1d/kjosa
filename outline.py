@@ -1,6 +1,5 @@
 """
 pseudocode
-
 """
 
 
@@ -68,5 +67,7 @@ data model notes (not sure if good):
 
 how do we stop folks from creating multiple registrations?
   -- is this an issue?
-
+  hash(name + district + phone) 
+    indexes to something that decrypts with password
+    
 """

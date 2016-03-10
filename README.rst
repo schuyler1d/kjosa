@@ -14,6 +14,7 @@ We also want the following goals:
 * People should be able to change their phone numbers securely without
   a full visit to an administration station (polling/DMV/etc)
 * People should NOT be able to sustain multiple accounts
+* No data at-rest should be de-anonymizing 
 
 Assumptions:
 * The main concern with phone company and corporate intermediaries is spying,
@@ -25,4 +26,13 @@ Setup
 * In production, the Twilio portion should only white-list the Twilio server
 * The admin section should also not be available on the public web, but should
   white-list only polling/administration stations
+
+
+Things to worry about
+---------------------
+* Is there a way for a citizen to see if your vote was counted?
+  (need the cool homomorphic protocol thing)
+  What would need to be public?  phone hmacs?
+* Is there a way to assure voters that the state isn't stuffing the ballot?
+  (probably not!)
 
