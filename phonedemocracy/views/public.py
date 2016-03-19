@@ -25,3 +25,8 @@ def get_vote_options(request, model, obj_id):
     # http://www.bennolan.com/2011/04/28/proof-of-work-in-js.html
     pass
 
+
+def print_out_at_votinglocation(request):
+    #gives the web password and instructions to user
+    #
+    pass
