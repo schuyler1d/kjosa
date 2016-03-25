@@ -15,10 +15,12 @@ def receive_sms_vote(request):
     #     they also have access to the web
     print (request.POST)
     r = twiml.Response()
-    r.message('Thanks for the SMS message!')
+    if '6467328' in request.POST.get('From',''):
+        r.message("Hello Bunny!")
+    else:
+        r.message('Thanks for the SMS message! -sky')
     return r
     
-
     
 
 def receive_phone_vote(request):
