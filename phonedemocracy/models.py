@@ -108,6 +108,8 @@ class IssueVote(models.Model):
     #   we also don't want to give the voter 'extra votes' just by changing phone#'s
     #   at strategic moments
     #  non-changing vals: voter_id+issue+????
+    #  if it's a slowhash, maybe this is a worthy expense to the system, since
+    #   it's a legitimate vote
     procon = models.SmallIntegerField() #integer:could be weighted, etc
     shouldvote = models.SmallIntegerField() #boolean
     issue = models.ForeignKey(Issue, db_index=True)
