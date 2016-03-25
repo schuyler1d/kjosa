@@ -78,7 +78,7 @@ class FailedAttemptLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     ##fasthash: how do we avoid at-rest vulnerability here?
     phone_hash = models.CharField(max_length=1024, db_index=True)
-    failure_code = models.SmallPositiveInteger(choices=(
+    failure_code = models.PositiveSmallIntegerField(choices=(
         (1, 'bad phone/password match'),
         (2, 'bad vote code'),
     ))
