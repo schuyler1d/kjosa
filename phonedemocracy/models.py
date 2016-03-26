@@ -77,8 +77,8 @@ class Voter(models.Model):
     phone_pw_hash = models.CharField(max_length=1024, db_index=True)
 
     @classmethod
-    def hash_phone_pw(phone, pw):
-        return hashlib.sha256('%s%s' % (phone, pw)).hexdigest()
+    def hash_phone_pw(cls, phone, pw):
+        return hashlib.sha256(bytes('%s%s' % (phone, pw), 'utf-8')).hexdigest()
 
 
 class VoterUnique(models.Model):

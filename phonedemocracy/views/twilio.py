@@ -12,14 +12,15 @@ def parse_vote_body(text):
     opts = {
         'x': 'issue',
         'v': 'vote',
-        'pass': 'password',
+        'p': 'password',
     }
     rv = {}
     exclude = ''.join(opts.keys())
     for k,v in opts.items():
-        val = re.search(r'%s\s*([^%s]+)' % (k, exclude), text, re.I)
+        val = re.search(r'%s\W*(\d+)' % (k), text, re.I)
         if val:
             rv[v] = re.sub(r'\W', '', val.groups()[0])
+    print(rv)
     return rv
 
 @twilio_view
@@ -41,11 +42,14 @@ def receive_sms_vote(request):
     if 'issue' in body and 'password' in body and 'vote' in body:
         iss = Issue.objects.filter(pk=body['issue']).first()
         if iss:
+            print('issue', iss)
             voter_hash = Voter.hash_phone_pw(phone_num, body['password'])
+            print('voter_hash', voter_hash)
             if Voter.objects.filter(phone_pw_hash=voter_hash):
                 existing_vote = IssueVote.objects.filter(issue=iss,
                                                          voter_hash=voter_hash)
                 if existing_vote:
+                    print('existing')
                     existing_vote.update(procon=int(body['vote']))
                 else:
                     IssueVote.objects.create(
