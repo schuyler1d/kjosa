@@ -42,7 +42,7 @@ def receive_sms_vote(request):
     if 'issue' in body and 'password' in body and 'vote' in body:
         iss = Issue.objects.filter(pk=body['issue']).first()
         if iss:
-            print('issue', iss)
+            print('issue phone', iss, phone_num)
             voter_hash = Voter.hash_phone_pw(phone_num, body['password'])
             print('voter_hash', voter_hash)
             if Voter.objects.filter(phone_pw_hash=voter_hash):
