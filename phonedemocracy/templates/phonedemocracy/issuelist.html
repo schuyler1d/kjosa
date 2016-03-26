@@ -1,0 +1,33 @@
+{% for issue in issues %}
+<h2><a href="{{issue.url}}" target="_blank">{{issue.title}}</a></h2>
+<ul>
+  <li>id: {{issue.id}} (status: {{issue.status}})</li>
+  <!-- placeholder for what the code would be to send a vote secretly-->
+  <li>options:
+    {% for ch in issue.choices %}
+       <li>
+         {{ch.0}}: {{ch.1}}
+         <ul>
+           <li>so phonecompany doesn't know how you vote:
+             <code>
+               
+             </code>
+           </li>
+           <li>phonecompany will know how you voted:
+             <code>{{issue.shortcode}} {{ch.0}}</code>
+           </li>
+         </ul>
+       </li>
+    {% endfor %}
+</ul>
+<!--
+    This is the hmac value that will hash with issue+voteoption
+
+    issuehmac=hmac(server_secret, issue)
+    voter sees: hmac+issue
+    voter client generates: clientissuehmac = hmac(webpw, issuehmac)
+    issue vote is firstletter(clientissuehmac) + vote_option_index
+-->
+<span data-hmac=""></span>
+
+{% endfor %}

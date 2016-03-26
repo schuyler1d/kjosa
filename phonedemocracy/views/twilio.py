@@ -15,12 +15,17 @@ def receive_sms_vote(request):
     #     they also have access to the web
     print (request.POST)
     r = twiml.Response()
-    if '6467328' in request.POST.get('From',''):
-        r.message("Hello Bunny!")
+    
+    if '6467' in request.POST.get('From',''):
+        r.message("Hello XXXX")
     else:
         r.message('Thanks for the SMS message! -sky')
     return r
     
+"""
+sample data
+<QueryDict: {'NumSegments': ['1'], 'Body': ['Test555555'], 'FromCity': ['NEW YORK'], 'FromCountry': ['US'], 'SmsMessageSid': ['SM146dasdfasdf'], 'FromZip': ['10010'], 'SmsSid': ['SM146d3asdfasdfa'], 'ToZip': ['11222'], 'ToCountry': ['US'], 'From': ['+16461231234'], 'NumMedia': ['0'], 'AccountSid': ['asdfasdf'], 'ToState': ['NY'], 'ToCity': ['BROOKLYN'], 'To': ['+13471231234'], 'ApiVersion': ['2010-04-01'], 'MessageSid': ['SM146d3d'], 'FromState': ['NY'], 'SmsStatus': ['received']}>
+"""
     
 
 def receive_phone_vote(request):

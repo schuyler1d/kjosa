@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.views.generic.edit import FormView
 
+
 class ChangePhone(FormView):
     template_name = 'change_phone.html'
     form_class = None #TheForm
@@ -30,3 +31,4 @@ def print_out_at_votinglocation(request):
     #gives the web password and instructions to user
     #
     pass
+

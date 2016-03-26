@@ -48,6 +48,9 @@ Potential Attackers/Spies:
 class District(models.Model):
     title = models.TextField()
 
+    def __str__(self):
+        return self.title
+
 
 class Voter(models.Model):
     #should district somehow be built in to the Voter hash?
@@ -56,12 +59,14 @@ class Voter(models.Model):
     phone_name_pw_hash = models.CharField(max_length=1024, db_index=True) 
 
     ##slowhash > 1seconds
-    webpw_phone_hash = models.CharField(max_length=1024, db_index=True) 
+    # for getting info that Phone Co. should not know (e.g. anon vote value)
+    webpw_hash = models.CharField(max_length=1024, db_index=True)
 
     # When people change their phones online, we increment this
     index = models.IntegerField() 
 
     ##fasthash (because server is doing it)
+    #for verifying a phone vote
     phone_pw_hash = models.CharField(max_length=1024, db_index=True)
 
 
@@ -96,8 +101,22 @@ class VoterUnique(models.Model):
 class Issue(models.Model):
     url = models.URLField()
     title = models.TextField()
-    status = models.SmallIntegerField()
+    shortcode= models.CharField(max_length=10)
+    status = models.SmallIntegerField(default=0)
     district = models.ManyToManyField(District, db_index=True)
+
+    def __str__(self):
+        return '%s (%s)' % (self.title, self.shortcode)
+
+    def choices(self):
+        return (
+            (0, 'null (no preference)'),
+            (1, 'pro: force a vote'),
+            (2, 'con: vote no'),
+            (3, "don't vote on this"),
+        )
+
+
 
 
 class IssueVote(models.Model):
