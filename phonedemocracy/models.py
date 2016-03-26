@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 """
 
@@ -53,6 +55,9 @@ class District(models.Model):
 
 
 class Voter(models.Model):
+    #to avoid sequential analysis
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
     #should district somehow be built in to the Voter hash?
 
     ##slowhash > 1seconds
@@ -63,11 +68,22 @@ class Voter(models.Model):
     webpw_hash = models.CharField(max_length=1024, db_index=True)
 
     # When people change their phones online, we increment this
-    index = models.IntegerField() 
+    index = models.IntegerField(default=0)
 
     ##fasthash (because server is doing it)
     #for verifying a phone vote
     phone_pw_hash = models.CharField(max_length=1024, db_index=True)
+
+
+class VoterUnique(models.Model):
+    """
+    Canonical verified voter, but this needs to be
+    encrypted a bunch of times by a bunch of trusted people's
+    private keys that are unlikely to conspire
+    """
+    #to avoid sequential analysis
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name_address_hash = models.TextField()
 
 
 class VoterChangeLog(models.Model):
@@ -87,15 +103,6 @@ class FailedAttemptLog(models.Model):
         (1, 'bad phone/password match'),
         (2, 'bad vote code'),
     ))
-
-
-class VoterUnique(models.Model):
-    """
-    Canonical verified voter, but this needs to be
-    encrypted a bunch of times by a bunch of trusted people's
-    private keys that are unlikely to conspire
-    """
-    name_address_hash = models.TextField()
 
 
 class Issue(models.Model):

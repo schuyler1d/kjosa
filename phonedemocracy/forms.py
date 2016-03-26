@@ -13,3 +13,23 @@ class VoterCreation(forms.Form):
     #system generates:
     web_password = forms.CharField()
 
+class VoterRecord(forms.Form):
+
+    ###
+    # Voter fields
+    ###
+    phone_name_pw_hash = forms.CharField(max_length=1024) 
+
+    ##slowhash > 1seconds
+    # for getting info that Phone Co. should not know (e.g. anon vote value)
+    webpw_hash = forms.CharField(max_length=1024)
+
+    ##fasthash (because server is doing it)
+    #for verifying a phone vote
+    phone_pw_hash = forms.CharField(max_length=1024)
+    
+
+    ###
+    # VoterUnique fields
+    ###
+    name_address_hash = forms.CharField()

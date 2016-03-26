@@ -1,0 +1,54 @@
+{% load staticfiles %}
+<form id="data-input">
+  {{datainputform}}
+</form>
+
+<h2>Processed Info</h2>
+<ul>
+  <li id="name"></li>
+  <li id="address"></li>
+  <li id="phone"></li>
+</ul>
+
+<h2>Going to Server</h2>
+<form id="server-ready">
+  {{form}}
+</form>
+
+<script src="{% static 'phonedemocracy/node_modules/bcryptjs/dist/bcrypt.js' %}"></script>
+<script src="{% static 'admin/js/vendor/jquery/jquery.min.js' %}"></script>
+<script>
+var homogenizeString = function(str) {
+  return (str
+    .toUpperCase()
+    .replace(/\W+/g,' ')
+    .replace(/\s+/g,' ')
+    .replace(/^\s+/g,'')
+    .replace(/\s+$/g,'')
+    );
+};
+
+$('#data-input').change(function() {
+  var name = homogenizeString($('#id_full_name').val());
+  var address = homogenizeString($('#id_address').val());
+  $('#name').html(name);
+  $('#address').html(address);
+});
+var sky = "foobar";
+window.crypto.subtle.digest(
+    {
+        name: "SHA-256",
+    },
+    new Uint8Array(sky) //The data you want to hash as an ArrayBuffer
+)
+.then(function(hash){
+    //returns the hash as an ArrayBuffer
+    console.log(hash);
+    var str = '';
+    var x = new Uint8Array(hash);
+    for (v of x.values()) {console.log(v); str=str+v.toString(16)}
+    console.log("This is the same as `echo -n foobar |sha256sum` ")
+    console.log(str);
+    //console.log(x.map(function(c){String.fromCharCode(c)}));
+})
+</script>

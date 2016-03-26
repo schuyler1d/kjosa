@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.conf.urls import url
-#from phonedemocracy.views.twilio import receive_sms_vote
+from django.contrib.admin.views.decorators import staff_member_required
+
+from phonedemocracy.views.registration import RegisterVoter
 
 urlpatterns = [
     #twilio setup
@@ -8,4 +10,6 @@ urlpatterns = [
 
     #issues
     url(r'^issues/(?P<district>\d+)', 'phonedemocracy.views.issues.list_issues'),
+
+    url(r'^official/newvoter', staff_member_required(RegisterVoter.as_view())),
 ]

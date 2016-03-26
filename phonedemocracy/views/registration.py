@@ -1,12 +1,18 @@
-from django.contrib.admin.views.decorators import staff_member_required
-
 from django.views.generic.edit import FormView
 
+from phonedemocracy.forms import VoterCreation, VoterRecord
 
 class RegisterVoter(FormView):
-    template_name = 'phonedemocracy/staff/register.html'
-    form_class = None #TheForm
+    template_name = 'phonedemocracy/staff/registervoter.html'
+    form_class = VoterRecord
     success_url = '/thanks/'
+
+    def get_context_data(self, **kwargs):
+        ctx = super(RegisterVoter, self).get_context_data(**kwargs)
+        ctx.update({
+            'datainputform': VoterCreation(),
+        })
+        return ctx
 
     def form_valid(self, form):
         #make sure doesn't match VoterUnique
