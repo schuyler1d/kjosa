@@ -21,13 +21,9 @@ class RegisterVoter(FormView):
         #otherwise
         # 1. save voter unique <- TODO
         # 2. save voter
-        import pdb; pdb.set_trace()
         voter_data = form.cleaned_data.copy()
         voter_data.pop('name_address_hash', '')
         v = Voter(**voter_data)
         v.save()
         return super(RegisterVoter, self).form_valid(form)
 
-
-    def form_invalid(self, form):
-        import pdb; pdb.set_trace()
