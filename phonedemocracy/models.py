@@ -1,3 +1,4 @@
+import hashlib
 import uuid
 
 from django.db import models
@@ -58,7 +59,8 @@ class Voter(models.Model):
     #to avoid sequential analysis
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    #should district somehow be built in to the Voter hash?
+    #should district be obscured further inside one of the hashes?
+    #district = models.ForeignKey(District)
 
     ##slowhash > 1seconds
     phone_name_pw_hash = models.CharField(max_length=1024, db_index=True) 
@@ -73,6 +75,10 @@ class Voter(models.Model):
     ##fasthash (because server is doing it)
     #for verifying a phone vote
     phone_pw_hash = models.CharField(max_length=1024, db_index=True)
+
+    @classmethod
+    def hash_phone_pw(phone, pw):
+        return hashlib.sha256('%s%s' % (phone, pw)).hexdigest()
 
 
 class VoterUnique(models.Model):

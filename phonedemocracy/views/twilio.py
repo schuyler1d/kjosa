@@ -1,7 +1,26 @@
+import hashlib
+import re
+
 from django.shortcuts import render
 
 from django_twilio.decorators import twilio_view
 from twilio import twiml
+
+from phonedemocracy.models import Voter, Issue, IssueVote
+
+def parse_vote_body(text):
+    opts = {
+        'x': 'issue',
+        'v': 'vote',
+        'p': 'password',
+    }
+    rv = {}
+    exclude = ''.join(opts.keys())
+    for k,v in opts.items():
+        val = re.search(r'%s\s*([^%s]+)' % (k, exclude), text, re.I)
+        if val:
+            rv[v] = re.sub(r'\W', '', val.groups()[0])
+    return rv
 
 @twilio_view
 def receive_sms_vote(request):
@@ -15,11 +34,27 @@ def receive_sms_vote(request):
     #     they also have access to the web
     print (request.POST)
     r = twiml.Response()
-    
-    if '6467' in request.POST.get('From',''):
-        r.message("Hello XXXX")
-    else:
-        r.message('Thanks for the SMS message! -sky')
+    phone_num = request.POST.get('From','')
+    body = parse_vote_body(request.POST.get('Body', ''))
+
+    r.message(("That doesn't seem like a well-formed vote."))
+    if 'issue' in body and 'password' in body and 'vote' in body:
+        iss = Issue.objects.filter(pk=body['issue']).first()
+        if iss:
+            voter_hash = Voter.hash_phone_pw(phone_num, body['password'])
+            if Voter.objects.filter(phone_pw_hash=voter_hash):
+                existing_vote = IssueVote.objects.filter(issue=iss,
+                                                         voter_hash=voter_hash)
+                if existing_vote:
+                    existing_vote.update(procon=int(body['vote']))
+                else:
+                    IssueVote.objects.create(
+                        issue=iss,
+                        voter_hash=voter_hash,
+                        procon=int(body['vote']),
+                        shouldvote = 0,
+                        validation_code='x')
+                r.message("Thanks for voting! -sky")
     return r
     
 """

@@ -1,6 +1,8 @@
 from django.views.generic.edit import FormView
 
 from phonedemocracy.forms import VoterCreation, VoterRecord
+from phonedemocracy.models import Voter, VoterUnique
+
 
 class RegisterVoter(FormView):
     template_name = 'phonedemocracy/staff/registervoter.html'
@@ -17,10 +19,15 @@ class RegisterVoter(FormView):
     def form_valid(self, form):
         #make sure doesn't match VoterUnique
         #otherwise
-        # 1. save voter unique
+        # 1. save voter unique <- TODO
         # 2. save voter
+        import pdb; pdb.set_trace()
+        voter_data = form.cleaned_data.copy()
+        voter_data.pop('name_address_hash', '')
+        v = Voter(**voter_data)
+        v.save()
+        return super(RegisterVoter, self).form_valid(form)
 
-        form.send_email()
-        return super(ChangePhone, self).form_valid(form)
 
-
+    def form_invalid(self, form):
+        import pdb; pdb.set_trace()
