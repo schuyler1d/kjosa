@@ -27,7 +27,7 @@ def parse_vote_body(text):
 def receive_sms_vote(request):
     # * validate voter
     # * validate vote text:
-    #      1. if 1 or 0 
+    #      1. if 1 or 0
     #      2. if a coded vote, figure out which option it was
     # * store vote
     # * sms back the user with some verification code?
@@ -39,7 +39,10 @@ def receive_sms_vote(request):
     body = parse_vote_body(request.POST.get('Body', ''))
 
     r.message(("That doesn't seem like a well-formed vote."))
-    if 'issue' in body and 'password' in body and 'vote' in body:
+    if phone_num \
+       and 'issue' in body \
+       and 'password' in body \
+       and 'vote' in body:
         iss = Issue.objects.filter(pk=body['issue']).first()
         if iss:
             print('issue phone', iss, phone_num)
@@ -58,7 +61,9 @@ def receive_sms_vote(request):
                         procon=int(body['vote']),
                         shouldvote = 0,
                         validation_code='x')
-                r.message("Thanks for voting! -sky")
+                r.message(("Thanks for voting! "
+                           "We suggest you delete your sms history. "
+                           "-sky"))
     return r
     
 """

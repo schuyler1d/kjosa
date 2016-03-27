@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# Connier uWSGI Service File
+set -e
+
+# Config
+NAME=kjosa
+USER=www-data
+HOME=/home/httpd
+PIDFILE=$HOME/$NAME.pid
+DAEMON=/usr/local/bin/uwsgi
+LOG=/var/log/nginx/uwsgi.log
+# when touched the service will reload gracefully
+TOUCHFILE_CONNIER=/home/httpd/kjosa/nginx/kjosa_uwsgi.ini
+
+DAEMON_OPTS="--emperor /home/httpd/kjosa/nginx \
+             --lazy-apps --touch-chain-reload $TOUCHFILE_CONNIER \
+             --pidfile $PIDFILE --daemonize $LOG"
+
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
+
+test -x $DAEMON || exit 5
+
+start () {
+        start-stop-daemon --start \
+                          --chdir $HOME \
+                          --pidfile $PIDFILE \
+                          --exec $DAEMON -- $DAEMON_OPTS
+}
+
+stop () {
+    start-stop-daemon --stop \
+                      --oknodo \
+                      --retry 5 \
+                      --pidfile $PIDFILE
+}
+
+status () {
+    if [ -e $PIDFILE ]; then
+        PID="$(cat $PIDFILE)"
+        PNAME="$(ps -p $PID -o comm=)"
+        if [ "$PNAME" == "uwsgi" ]; then
+            echo "$NAME is running with pid $PID"
+            exit 0
+        else
+            echo "PID file points to different process, service not running"
+            exit 1
+        fi
+    else
+        echo "No pid file found for $NAME, service not running"
+        exit 1
+    fi
+}
+
+case "$1" in
+  start)
+        if [ -e $PIDFILE ]; then
+            PID="$(cat $PIDFILE)"
+            if ps -p $PID > /dev/null; then
+                echo "Daemon already running with pid $PID"
+                exit 1
+            else
+                rm $PIDFILE
+                echo -n "Starting daemon: "$NAME
+                start
+            fi
+        else
+            echo -n "Starting daemon: "$NAME
+            start
+        fi
+        echo "."
+    ;;
+  stop)
+        echo -n "Stopping daemon: "$NAME
+        stop
+        echo "."
+    ;;
+  restart)
+        echo -n "Restarting daemon: "$NAME
+        stop
+        start
+        echo "."
+    ;;
+  reload)
+        echo -n "Gracefully reloading daemon: "$NAME
+        touch "$TOUCHFILE_CONNIER"
+        echo "."
+    ;;
+  status)
+        status
+    ;;
+  *)
+    echo "Usage: "$1" {start|stop|restart|reload|status}"
+    exit 1
+esac
+
+exit 0
+
