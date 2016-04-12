@@ -127,6 +127,12 @@ window.crypto.subtle.digest(
   .catch(function(err){
     console.error(err);
   });
+
+  //hmac: secret='asdf1234' add 'x', add 'y'
+  //   = afaa76dd3ae8b3467ef951147e0e8c51
+  //  digest size:16
+  //  blocksize: 64
+  //  hmac-md5
   window.crypto.subtle.importKey(
     "jwk", //can be "jwk" or "raw"
     {   //this is an example jwk key, "raw" would be an ArrayBuffer

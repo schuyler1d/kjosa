@@ -38,7 +38,7 @@ def receive_sms_vote(request):
     phone_num = request.POST.get('From','')
     body = parse_vote_body(request.POST.get('Body', ''))
 
-    r.message(("That doesn't seem like a well-formed vote."))
+    message = "That doesn't seem like a well-formed vote."
     if phone_num \
        and 'issue' in body \
        and 'password' in body \
@@ -61,9 +61,10 @@ def receive_sms_vote(request):
                         procon=int(body['vote']),
                         shouldvote = 0,
                         validation_code='x')
-                r.message(("Thanks for voting! "
+                message = ("Thanks for voting! "
                            "We suggest you delete your sms history. "
-                           "-sky"))
+                           "-sky")
+    r.message(message)
     return r
     
 """

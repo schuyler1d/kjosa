@@ -1,7 +1,9 @@
 import hashlib
+import hmac
 import uuid
 
 from django.db import models
+from django.conf import settings
 """
 
 Potential Attackers/Spies:
@@ -74,7 +76,16 @@ class Voter(models.Model):
 
     ##fasthash (because server is doing it)
     #for verifying a phone vote
+    #currently sha256 (but no seed, and not hmac)
+    #TODO: add those.
     phone_pw_hash = models.CharField(max_length=1024, db_index=True)
+
+    @classmethod
+    def hash_phone_pw2(cls, phone, pw):
+        myhmac = hmac.new(bytes(settings.VOTING_PUBLIC_SALT, 'utf-8'))
+        myhmac.update(bytes(phone, 'utf-8'))
+        myhmac.update(bytes(pw, 'utf-8'))
+        return myhmac.hexdigest()
 
     @classmethod
     def hash_phone_pw(cls, phone, pw):

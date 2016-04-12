@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Connier uWSGI Service File
+# uWSGI Service File
 set -e
 
 # Config
@@ -11,10 +11,10 @@ PIDFILE=$HOME/$NAME.pid
 DAEMON=/usr/local/bin/uwsgi
 LOG=/var/log/nginx/uwsgi.log
 # when touched the service will reload gracefully
-TOUCHFILE_CONNIER=/home/httpd/kjosa/nginx/kjosa_uwsgi.ini
+TOUCHFILE=/home/httpd/kjosa/nginx/kjosa_uwsgi.ini
 
 DAEMON_OPTS="--emperor /home/httpd/kjosa/nginx \
-             --lazy-apps --touch-chain-reload $TOUCHFILE_CONNIER \
+             --lazy-apps --touch-chain-reload $TOUCHFILE \
              --pidfile $PIDFILE --daemonize $LOG"
 
 export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
@@ -83,7 +83,7 @@ case "$1" in
     ;;
   reload)
         echo -n "Gracefully reloading daemon: "$NAME
-        touch "$TOUCHFILE_CONNIER"
+        touch "$TOUCHFILE"
         echo "."
     ;;
   status)
