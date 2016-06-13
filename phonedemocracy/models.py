@@ -1,9 +1,12 @@
 import hashlib
 import hmac
+import random
 import uuid
 
 from django.db import models
 from django.conf import settings
+
+from speck import SpeckCipher
 """
 
 Potential Attackers/Spies:
@@ -92,6 +95,73 @@ class Voter(models.Model):
         return hashlib.sha256(bytes('%s%s' % (phone, pw), 'utf-8')).hexdigest()
 
 
+    base31 = 'abcdefghjkmnpqrstuvwxyz23456789'
+    speckparams = dict(key_size=64, block_size=32)
+    @classmethod
+    def decode_vote_code(cls, code):
+        """
+        code is 7char speck encrypted value
+        with 32-bit encoding of the letters below (avoiding mistake values)
+        """
+        assert(len(code) == 7)
+        code_checked = code.lower()
+        int31s = [cls.base31.index(c) for c in code]
+        codable_int = 0
+        for i in range(7):
+            codable_int = codable_int + (31**i)*int31s[i]
+        return codable_int
+
+    @classmethod
+    def decode_vote_int(cls, codable_int):
+        iv = codable_int >> 24
+        codable_int = codable_int - (iv << 24)
+        issue_id = codable_int >> 8
+        choice_id = codable_int - (issue_id << 8)
+        return (issue_id, choice_id)
+
+    @classmethod
+    def encode_vote_code(cls, issue_id, choice_id):
+        """
+        issue_id: 16-bit positive integer
+        choice_id: 8-bit positive integer
+        preserve remaining 8 bits for 'IV' or other goals
+        """
+        assert(issue_id < 65536)
+        assert(choice_id < 256)
+        iv = random.randint(0,255)
+        codable_int = ((iv << 24) + (issue_id << 8) + choice_id)
+        return codable_int
+
+    @classmethod
+    def encode_vote_int(cls, codable_int):
+        char31s = []
+        for i in range(7):
+            char31s.append(cls.base31[codable_int % 31])
+            codable_int = codable_int // 31
+        return ''.join(char31s)
+
+    @classmethod
+    def decode_encrypted_vote(cls, key, code):
+        """
+        key is 64bit (converted from webpasswd)
+        """
+        cipher = SpeckCipher(key, **cls.speckparams)
+        encrypted_int = cls.decode_vote_code(code)
+        vote_int = cipher.decrypt(encrypted_int)
+        return cls.decode_vote_int(vote_int)
+
+    @classmethod
+    def encode_encrypted_vote(cls, key, issue_id, choice_id):
+        """
+        In practice, this will be implemented in Javascript
+        but this is the inverse of decode_encrypted_vote()
+        """
+        cipher = SpeckCipher(key, **cls.speckparams)
+        codable_int = cls.encode_vote_code(issue_id, choice_id)
+        encrypted_int = cipher.encrypt(codable_int)
+        return cls.encode_vote_int(encrypted_int)
+
+                      
 class VoterUnique(models.Model):
     """
     Canonical verified voter, but this needs to be

@@ -1,4 +1,5 @@
 from django.views.generic.edit import FormView
+from django.conf import settings
 
 from phonedemocracy.forms import VoterCreation, VoterRecord
 from phonedemocracy.models import Voter, VoterUnique
@@ -13,6 +14,10 @@ class RegisterVoter(FormView):
         ctx = super(RegisterVoter, self).get_context_data(**kwargs)
         ctx.update({
             'datainputform': VoterCreation(),
+            'settings': {
+                'VOTING_PUBLIC_SALT': settings.VOTING_PUBLIC_SALT,
+            },
+
         })
         return ctx
 

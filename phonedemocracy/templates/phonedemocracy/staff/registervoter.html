@@ -1,4 +1,12 @@
 {% load staticfiles %}
+<!doctype html>
+<html>
+  <head>
+    <title>register voter</title>
+    <link rel="stylesheet" href="{% static 'phonedemocracy/concise.min.css' %}"
+          type="text/css" />
+  </head>
+  <body>
 <form id="data-input">
   {{datainputform}}
 </form>
@@ -20,14 +28,7 @@
 <script src="{% static 'phonedemocracy/node_modules/bcryptjs/dist/bcrypt.js' %}"></script>
 <script src="{% static 'admin/js/vendor/jquery/jquery.min.js' %}"></script>
 <script>
-var str2ab = function(str) {
-  var buf = new ArrayBuffer(str.length); // 2 bytes for each char
-  var bufView = new Uint8Array(buf);
-  for (var i=0, strLen=str.length; strLen > i; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
-}
+  {% include "phonedemocracy/jslib.html" %}
 
 var homogenizeString = function(str) {
   return (str
@@ -115,14 +116,16 @@ window.crypto.subtle.digest(
     {
       name: "HMAC",
       hash: {name: "SHA-256"}, //can be "SHA-1", "SHA-256", "SHA-384", or "SHA-512"
-      //length: 256, //optional, if you want your key length to differ from the hash function's block length
+  //length: 256, //optional, if you want your key length to differ from the hash function's block length
+      length:128
     },
-    false, //whether the key is extractable (i.e. can be used in exportKey)
+    true, //whether the key is extractable (i.e. can be used in exportKey)
     ["sign", "verify"] //can be any combination of "sign" and "verify"
   )
   .then(function(key){
     //returns a key object
     console.log(key);
+    window.skykey = key;
   })
   .catch(function(err){
     console.error(err);
@@ -147,13 +150,18 @@ window.crypto.subtle.digest(
       //length: 256, //optional, if you want your key length to differ from the hash function's block length
     },
     false, //whether the key is extractable (i.e. can be used in exportKey)
-    ["sign", "verify"] //can be any combination of "sign" and "verify"
+    ["encrypt" //,"decrypt",
+      //"sign", "verify"
+    ] //can be any combination of "sign" and "verify"
   )
   .then(function(key){
     //returns the symmetric key
-    console.log(key);
+    console.log('cryptokeyimported', key);
+    
   })
   .catch(function(err){
     console.error(err);
   });
 </script>
+  </body>
+  </html>

@@ -22,6 +22,9 @@ def list_issues(request, district):
         'sms_uri': sms_uri(request),
         'sms_number': settings.TWILIO_PHONENUMBER,
         'sms_number_friendly': settings.TWILIO_PHONENUMBER_FRIENDLY,
+        'settings': {
+            'VOTING_PUBLIC_SALT': settings.VOTING_PUBLIC_SALT,
+            },
     })
 
 def issue_detail(request):

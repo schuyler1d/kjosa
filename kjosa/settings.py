@@ -123,5 +123,10 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = '%s/static_build' % BASE_DIR
 
+#this needs to be a result that comes out of
+# bcrypt.genSaltSync(10)
+VOTING_PUBLIC_SALT = None
+
+
 from local_settings import *
 
