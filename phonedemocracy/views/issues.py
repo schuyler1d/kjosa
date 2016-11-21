@@ -1,9 +1,9 @@
 import re
 
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.conf import settings
 
-from phonedemocracy.models import Issue
+from phonedemocracy.models import Issue, District
 
 def sms_uri(request):
     user_agent = request.META['HTTP_USER_AGENT']
@@ -19,6 +19,7 @@ def list_issues(request, district):
     #also order-by/show vote count
     return render(request, 'phonedemocracy/issuelist.html', {
         'issues': Issue.objects.filter(district__id=int(district)).order_by('-status'),
+        'district': get_object_or_404(District, id=int(district)),
         'sms_uri': sms_uri(request),
         'sms_number': settings.TWILIO_PHONENUMBER,
         'sms_number_friendly': settings.TWILIO_PHONENUMBER_FRIENDLY,

@@ -5,24 +5,57 @@
     <title>register voter</title>
     <link rel="stylesheet" href="{% static 'phonedemocracy/concise.min.css' %}"
           type="text/css" />
-  </head>
+    <style>
+      header {
+        position: fixed;
+        background-color: white;
+        width: 100%;
+        padding-bottom: 10px;
+        top: 0;
+        left: 0;
+      }
+      .issues {
+        margin-top: 10em;
+      }
+      .issue-title {
+        padding-top: 4em;
+      }
+    </style>
+</head>
 <body>
+<header>
+  <h1>{{district.title}} Issues</h1>
+
+  <label for="webpassword">Enter your "web password" to get the encrypted vote to send via SMS</label>
+  <input id="webpassword" placeholder="web password" />
+</header>
+
+
+<div class="issues">
+<ul class="issue-menu">
   {% for issue in issues %}
-<h2><a href="{{issue.url}}" target="_blank">{{issue.title}}</a></h2>
+  <li><a href="#issue-{{issue.id}}">{{issue.title}}</a></li>
+  {% endfor %}
+</ul>
+
+  {% for issue in issues %}
+<h2 class="issue-title" id="issue-{{issue.id}}">{{issue.title}}</h2>
+<p>See <a href="{{issue.url}}" target="_blank">details about this issue</a>.
+</p>
+  <h3>Options</h3>
+
 <ul>
-  <li>id: {{issue.id}} (status: {{issue.status}})</li>
   <!-- placeholder for what the code would be to send a vote secretly-->
-  <li>options:
     {% for ch in issue.choices %}
        <li>
          {{ch.0}}: {{ch.1}}
          <ul>
-           <li>so phonecompany doesn't know how you vote:
+           <li>so your phone company doesn't know how you vote:
              <code>
                
              </code>
            </li>
-           <li>phonecompany will know how you voted:
+           <li>phone company will know how you voted:
              <a href="{{sms_uri}}x{{issue.id}}v{{ch.0}},pass:">{{sms_number_friendly}}</a>
              <code>x{{issue.id}} v{{ch.0}}</code>
            </li>
@@ -30,6 +63,7 @@
        </li>
     {% endfor %}
 </ul>
+</div>
 <!--
     This is the hmac value that will hash with issue+voteoption
 
@@ -41,7 +75,10 @@
 <span data-hmac=""></span>
 
 {% endfor %}
-<script src="{% static 'phonedemocracy/node_modules/speck.js/lib/32/64.js' %}"></script>
+<script>
+exports = {};
+</script>
+<script src="{% static 'phonedemocracy/speck32_64.js' %}"></script>
 <script>
   {% include "phonedemocracy/jslib.html" %}
 </script>

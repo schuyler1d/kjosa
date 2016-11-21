@@ -1,5 +1,6 @@
 var PUBLIC_WEBPASSWORD_SALT = '{{settings.VOTING_PUBLIC_SALT}}';
 
+
 var str2ab = function(str) {
   var buf = new ArrayBuffer(str.length); // 2 bytes for each char
   var bufView = new Uint8Array(buf);
@@ -10,7 +11,45 @@ var str2ab = function(str) {
 }
 
 function webPasswordToSymmetricKey(webpassword, callback) {
-  //return bcrypt.genKey(PUBLIC_WEBPASSWORD_SALT)
+  /*
+    In python, identical to:
+    import hashlib
+    dk = hashlib.pbkdf2_hmac('sha256', webpassword.encode('utf8'),
+                        PUBLIC_WEBPASSWORD_SALT.encode('utf8'), 5000)
+    return [dk[i] for i in range(8)]
+   */
+
+  window.crypto.subtle.importKey(
+    "raw", //only "raw" is allowed
+    //window.crypto.getRandomValues(new Uint8Array(16)), //your password
+    new TextEncoder("utf-8").encode(webpassword),
+    {
+        name: "PBKDF2",
+    },
+    true, //whether the key is extractable (i.e. can be used in exportKey)
+    ["deriveKey", "deriveBits"] //can be any combination of "deriveKey" and "deriveBits"
+  )
+  .then(function(key){
+      //returns a key object
+      console.log('imported', key);
+      window.crypto.subtle.deriveBits(
+        {
+          "name": "PBKDF2",
+          //"salt": window.crypto.getRandomValues(new Uint8Array(16)),
+          "salt": new TextEncoder("utf-8").encode(PUBLIC_WEBPASSWORD_SALT),
+          "iterations": 5000,
+          "hash": {name: "SHA-256"}, //can be "SHA-1", "SHA-256", "SHA-384", or "SHA-512"
+        },
+        key, //your key from generateKey or importKey
+        64 //the number of bits you want to derive
+      )
+        .then(function(bits){
+          //returns the derived bits as an ArrayBuffer
+          var result = new Uint8Array(bits);
+          console.log('bits 8bit', result);
+          callback(result);
+        })
+   })
 }
 
 function encryptVote(key, issue_id, choice_id, callback) {
@@ -81,5 +120,10 @@ function skySpeckTest() {
   expandKey(key, expanded); //alters expanded
   var text = [0,0];
   encrypt(text, expanded); //alters text
+  return text;
   //will be: [4565, 26980] which is same as python's output
+}
+
+function encodeSpeckVote(webpassword, issue_id_, choice_id) {
+
 }

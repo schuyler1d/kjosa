@@ -204,7 +204,7 @@ class Issue(models.Model):
 
     def choices(self):
         return (
-            (0, 'null (no preference)'),
+            (0, 'no preference'),
             (1, 'pro: force a vote'),
             (2, 'con: vote no'),
             (3, "don't vote on this"),
