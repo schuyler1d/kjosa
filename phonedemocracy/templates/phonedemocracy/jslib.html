@@ -73,3 +73,13 @@ function skytest() {
       }
     );
 }
+
+function skySpeckTest() {
+  var expanded = [];
+  //each elt in key is a 16-bit number
+  var key = [0,0,0,50];
+  expandKey(key, expanded); //alters expanded
+  var text = [0,0];
+  encrypt(text, expanded); //alters text
+  //will be: [4565, 26980] which is same as python's output
+}
