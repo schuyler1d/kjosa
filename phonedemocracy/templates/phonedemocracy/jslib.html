@@ -31,7 +31,6 @@ function webPasswordToSymmetricKey(webpassword, callback) {
   )
   .then(function(key){
       //returns a key object
-      console.log('imported', key);
       window.crypto.subtle.deriveBits(
         {
           "name": "PBKDF2",
@@ -46,7 +45,6 @@ function webPasswordToSymmetricKey(webpassword, callback) {
         .then(function(bits){
           //returns the derived bits as an ArrayBuffer
           var result = new Uint8Array(bits);
-          console.log('bits 8bit', result);
           callback(result);
         })
    })
@@ -78,7 +76,8 @@ function encodeSpeckVote(key, issue_id, choice_id) {
   var expanded = [];
   expandKey(key, expanded); //alters expanded
   encrypt(text, expanded); //alters text
-  var codable_int = (text[0] << 16) + text[1];
+  //same as (text[0] << 16) but doesn't loop around to negative values
+  var codable_int = (text[0] * 65536) + text[1];
   return encode_vote_int(codable_int);
 }
 

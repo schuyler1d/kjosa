@@ -56,7 +56,7 @@
                &lt; type in web password above >
              </code>
            </li>
-           <li>phone company will know how you voted:
+           <li>phone company will know how you voted (and could theoretically alter it):
              <a href="{{sms_uri}}x{{issue.id}}v{{ch.0}} password:">{{sms_number_friendly}}</a>
              <code>x{{issue.id}} v{{ch.0}} password &lt;your phone pw></code>
            </li>
@@ -86,7 +86,6 @@ exports = {};
 <script>
   var webPassword = document.getElementById('webpassword');
   function finishWebPassword(evt) {
-    console.log(evt);
     if (evt.key == "Enter" || evt.type == 'blur') {
        if (webPassword.value) {
          webPassword.style['background-color'] = '#ccffcc';
