@@ -51,13 +51,14 @@
          {{ch.0}}: {{ch.1}}
          <ul>
            <li>so your phone company doesn't know how you vote:
-             <code>
-               
+             <a href="{{sms_uri}}">{{sms_number_friendly}}
+             </a><code class="coded" data-choice="{{ch.0}}" data-issue="{{issue.id}}">
+               &lt; type in web password above >
              </code>
            </li>
            <li>phone company will know how you voted:
-             <a href="{{sms_uri}}x{{issue.id}}v{{ch.0}},pass:">{{sms_number_friendly}}</a>
-             <code>x{{issue.id}} v{{ch.0}}</code>
+             <a href="{{sms_uri}}x{{issue.id}}v{{ch.0}} password:">{{sms_number_friendly}}</a>
+             <code>x{{issue.id}} v{{ch.0}} password &lt;your phone pw></code>
            </li>
          </ul>
        </li>
@@ -81,6 +82,32 @@ exports = {};
 <script src="{% static 'phonedemocracy/speck32_64.js' %}"></script>
 <script>
   {% include "phonedemocracy/jslib.html" %}
+</script>
+<script>
+  var webPassword = document.getElementById('webpassword');
+  function finishWebPassword(evt) {
+    console.log(evt);
+    if (evt.key == "Enter" || evt.type == 'blur') {
+       if (webPassword.value) {
+         webPassword.style['background-color'] = '#ccffcc';
+
+         webPasswordToSymmetricKey(webPassword.value, function(key) {
+            var elts = document.getElementsByClassName('coded');
+            for (var a in elts) {
+              var elt = elts[a];
+              if (elt.getAttribute) {
+                 var cryptedVote = encodeSpeckVote(key, elt.getAttribute('data-issue'), elt.getAttribute('data-choice'));
+                 elt.innerHTML = 'e' + cryptedVote + ' password &lt;your phone pw>';
+                 elt.previousSibling.href += 'e' + cryptedVote + ' password: ';
+              }
+            }
+
+         });
+       }
+    }
+  }
+  webPassword.addEventListener('keyup', finishWebPassword, true);
+  webPassword.addEventListener('blur', finishWebPassword, true);
 </script>
 </body>
 </html>

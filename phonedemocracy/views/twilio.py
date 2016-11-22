@@ -13,6 +13,7 @@ def parse_vote_body(text):
         'x': 'issue',
         'v': 'vote',
         'p': 'password',
+        'e': 'encrypted',
     }
     rv = {}
     exclude = ''.join(opts.keys())

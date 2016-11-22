@@ -52,68 +52,37 @@ function webPasswordToSymmetricKey(webpassword, callback) {
    })
 }
 
-function encryptVote(key, issue_id, choice_id, callback) {
-  //https://coolaj86.com/articles/webcrypto-encrypt-and-decrypt-with-aes/
-  // @issue_id is an integer (32bit)
-  // @choice_id is an integer (32bit)
-
-  //returns 16bytes (128 bits) encrypted in ECB mode
-  // we use ECB mode because it is a single block
-  // 32 bit IV + 32 bit CRC + issue_id + choice_id
-  //key = str2ab('aaaabbbbccccdddd');
-  data = str2ab('aaaabbbbccccdddd');
-  crypto.subtle.encrypt(
-    { name: 'AES-CBC', iv: str2ab('aaaa') }
-    , key
-    , data
-  ).then(function (decrypted) {
-    console.log(decrypted);
-  })
-  .catch(function(err) {
-    console.log(err);
-  })
+function encode_vote_code(issue_id, choice_id) {
+  if (issue_id >= 65536 || choice_id >= 256) {
+    throw Error("issue or choice id too large");
+  }
+  //0-255
+  var iv = window.crypto.getRandomValues(new Uint8Array(1))[0];
+  var codable_int = ((iv << 24) + (issue_id << 8) + choice_id);
+  var first_16bits = codable_int >> 16;
+  return [first_16bits, codable_int - (first_16bits << 16)];
 }
 
-function skytest() {
-
-  var aesAlgorithmKeyGen = {
-    name: "AES-CBC",
-    // AesKeyGenParams
-    length: 128
-  };
-
-  var aesAlgorithmEncrypt = {
-    name: "AES-CBC",
-    // AesCbcParams
-    //iv: window.crypto.getRandomValues(new Uint8Array(16))
-    iv: str2ab('aaaabbbbccccdddd') //INSECURE
-  };
-
-  // Create a key generator to produce a one-time-use AES key to encrypt some data
-  window.crypto.subtle.generateKey(
-    aesAlgorithmKeyGen, true, ["encrypt"])
-    .then(
-      function(aesKey) {
-        window.sky2 = aesKey;
-        return window.crypto.subtle.encrypt(
-          aesAlgorithmEncrypt,
-          aesKey,
-          str2ab('aaaa')); //shortest output will be 16 bytes (upto 256)
-      }
-    ).then(
-      function(ciphertext) {
-        console.log("The ciphertext is: ", ciphertext);
-        window.skycipher = ciphertext;
-        window.xxx = new Uint8Array(ciphertext);
-      }
-    ).catch(
-      function(err) {
-        console.log(err);
-      }
-    );
+function encode_vote_int(codable_int) {
+  var base31 = 'abcdefghjkmnpqrstuvwxyz23456789';
+  var char31s = [];
+  for (var i=0; i<7; i++) {
+    char31s.push(base31[codable_int % 31]);
+    codable_int = parseInt(codable_int / 31);
+  }
+  return char31s.join('');
 }
 
-function skySpeckTest() {
+function encodeSpeckVote(key, issue_id, choice_id) {
+  var text = encode_vote_code(parseInt(issue_id), parseInt(choice_id));
+  var expanded = [];
+  expandKey(key, expanded); //alters expanded
+  encrypt(text, expanded); //alters text
+  var codable_int = (text[0] << 16) + text[1];
+  return encode_vote_int(codable_int);
+}
+
+function speckTest() {
   var expanded = [];
   //each elt in key is a 16-bit number
   var key = [0,0,0,50];
@@ -122,8 +91,4 @@ function skySpeckTest() {
   encrypt(text, expanded); //alters text
   return text;
   //will be: [4565, 26980] which is same as python's output
-}
-
-function encodeSpeckVote(webpassword, issue_id_, choice_id) {
-
 }
