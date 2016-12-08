@@ -36,3 +36,7 @@ Things to worry about
 * Is there a way to assure voters that the state isn't stuffing the ballot?
   (probably not!)
 
+Credits
+-------
+
+`speck.py` comes from https://github.com/inmcm/Simon_Speck_Ciphers

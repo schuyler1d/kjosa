@@ -83,6 +83,16 @@ DATABASES = {
     }
 }
 
+if os.environ.get('DB_HOSTNAME'):
+    DATABASES['default'] = {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': os.environ['DB_NAME'],
+            'USER': os.environ['DB_USERNAME'],
+            'PASSWORD': os.environ['DB_PASSWORD'],
+            'HOST': os.environ['DB_HOSTNAME'],
+            'PORT': os.environ['DB_PORT'],
+    }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
@@ -120,7 +130,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
-STATIC_URL = '/static/'
+STATIC_URL = os.environ.get('STATIC_URL', '/static/')
 STATIC_ROOT = '%s/static_build' % BASE_DIR
 
 #this needs to be a result that comes out of

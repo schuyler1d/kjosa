@@ -17,14 +17,18 @@ def sms_uri(request):
 ## Issue pages
 def list_issues(request, district):
     #also order-by/show vote count
+    assert(settings.VOTING_PUBLIC_SALT)
+    assert(settings.VOTING_PUBLIC_SALT != settings.VOTING_TEMP_PUBLIC_SALT)
+
     return render(request, 'phonedemocracy/issuelist.html', {
-        'issues': Issue.objects.filter(district__id=int(district)).order_by('-status'),
         'district': get_object_or_404(District, id=int(district)),
+        'issues': Issue.objects.filter(district__id=int(district)).order_by('-status'),
         'sms_uri': sms_uri(request),
         'sms_number': settings.TWILIO_PHONENUMBER,
         'sms_number_friendly': settings.TWILIO_PHONENUMBER_FRIENDLY,
         'settings': {
             'VOTING_PUBLIC_SALT': settings.VOTING_PUBLIC_SALT,
+            'VOTING_TEMP_PUBLIC_SALT': settings.VOTING_TEMP_PUBLIC_SALT,
             },
     })
 

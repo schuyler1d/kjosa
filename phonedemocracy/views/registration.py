@@ -23,11 +23,20 @@ class RegisterVoter(FormView):
 
     def form_valid(self, form):
         #make sure doesn't match VoterUnique
+        #make sure ?doesn't match VoterChangeLog (or figure out how to cancel previous reverse)
         #otherwise
         # 1. save voter unique <- TODO
         # 2. save voter
         voter_data = form.cleaned_data.copy()
-        voter_data.pop('name_address_hash', '')
+        name_address_hash = voter_data.pop('name_address_hash')
+        new_phone = voter_data.pop('new_phone')
+        old_phone = voter_data.pop('old_phone')
+        old_index = voter_data.pop('old_index')
+        ##TODO:
+        ## 1. add VOTING_PRIVATE_SALT to phone password
+        ## 2. success url/experience (for voter to verify number)
+        ## 3. old phone
+        
         v = Voter(**voter_data)
         v.save()
         return super(RegisterVoter, self).form_valid(form)

@@ -1,28 +1,46 @@
 var PUBLIC_WEBPASSWORD_SALT = '{{settings.VOTING_PUBLIC_SALT}}';
+var PUBLIC_TEMP_WEBPASSWORD_SALT = '{{settings.VOTING_TEMP_PUBLIC_SALT}}';
 
 
 var str2ab = function(str) {
-  var buf = new ArrayBuffer(str.length); // 2 bytes for each char
-  var bufView = new Uint8Array(buf);
-  for (var i=0, strLen=str.length; strLen > i; i++) {
-    bufView[i] = str.charCodeAt(i);
+  return (new TextEncoder("utf-8").encode(str));
+}
+
+function bits2hex(bits /*Uint8Array*/) {
+  var final_hash = '';
+  for (v of bits.values()) {
+    var hex = v.toString(16);
+    final_hash = (final_hash 
+                  + ((hex.length == 2) ? hex : '0'+hex)
+                 );
+    //console.log(v, v.toString(16));
   }
-  return buf;
+  return final_hash;
 }
 
 function webPasswordToSymmetricKey(webpassword, callback) {
+  pbkdf2Cycle(new TextEncoder("utf-8").encode(webpassword),
+              PUBLIC_WEBPASSWORD_SALT, 4000,
+              function(bits) {
+                pbkdf2Cycle(bits,
+                            PUBLIC_TEMP_WEBPASSWORD_SALT, 1000,
+                            callback);
+              });
+}
+
+function pbkdf2Cycle(password, salt, count, callback) {
   /*
     In python, identical to:
     import hashlib
-    dk = hashlib.pbkdf2_hmac('sha256', webpassword.encode('utf8'),
-                        PUBLIC_WEBPASSWORD_SALT.encode('utf8'), 5000)
+    dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf8'),
+                        salt.encode('utf8'), count)
     return [dk[i] for i in range(8)]
    */
 
   window.crypto.subtle.importKey(
     "raw", //only "raw" is allowed
     //window.crypto.getRandomValues(new Uint8Array(16)), //your password
-    new TextEncoder("utf-8").encode(webpassword),
+    password,
     {
         name: "PBKDF2",
     },
@@ -35,8 +53,8 @@ function webPasswordToSymmetricKey(webpassword, callback) {
         {
           "name": "PBKDF2",
           //"salt": window.crypto.getRandomValues(new Uint8Array(16)),
-          "salt": new TextEncoder("utf-8").encode(PUBLIC_WEBPASSWORD_SALT),
-          "iterations": 5000,
+          "salt": new TextEncoder("utf-8").encode(salt),
+          "iterations": count,
           "hash": {name: "SHA-256"}, //can be "SHA-1", "SHA-256", "SHA-384", or "SHA-512"
         },
         key, //your key from generateKey or importKey

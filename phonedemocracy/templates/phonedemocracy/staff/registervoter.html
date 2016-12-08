@@ -5,6 +5,13 @@
     <title>register voter</title>
     <link rel="stylesheet" href="{% static 'phonedemocracy/concise.min.css' %}"
           type="text/css" />
+    <!--
+        Staff machine should send the phone number in plain text because:
+        1. We can store the phone hash in VoterUnique and verify that staff are not
+        creating fake phone number-name pairs
+        2. Server already exposed to phone numbers incoming from twilio -- just doesn't let them stay 'at rest'
+        3. However server shouldn't receive it with identity information
+     -->
   </head>
   <body>
 <form id="data-input">
@@ -19,60 +26,19 @@
 </ul>
 
 <h2>Going to Server</h2>
+  {{form.errors}}
 <form id="server-ready" method="POST">
   {{form}}
   <input type="submit" value="Create Voter" />
   <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}" />
 </form>
 
-<script src="{% static 'phonedemocracy/node_modules/bcryptjs/dist/bcrypt.js' %}"></script>
 <script src="{% static 'admin/js/vendor/jquery/jquery.min.js' %}"></script>
 <script>
   {% include "phonedemocracy/jslib.html" %}
 
-var homogenizeString = function(str) {
-  return (str
-    .toUpperCase()
-    .replace(/\W+/g,' ') //no special chars
-    .replace(/\s+/g,' ') //no extra spaces
-    .replace(/^\s+/g,'') //no leading space
-    .replace(/\s+$/g,'') //no trailing space
-    );
-};
-
-var generatePhonePassword = function() {
-  //TODO: make this use webcrypto and more robust (but still mnemonic)
-  return parseInt(Math.random() * 10000)
-  
-}
-
-var generatePhonePasswordHash = function(str_array, target) {
-  //TODO: SHOULD BE AN HMAC (also on server)
-
-  var str2encode = str_array.join('');
-  console.log('to encode', str2encode);
-  window.crypto.subtle.digest(
-    {name: "SHA-256"},
-    new Uint8Array(str2ab(str2encode)) //The data you want to hash as an ArrayBuffer
-  )
-    .then(function(hash){
-      //returns the hash as an ArrayBuffer
-      console.log(hash);
-      var final_hash = '';
-      var x = new Uint8Array(hash);
-      for (v of x.values()) {
-        var hex = v.toString(16);
-        final_hash = (final_hash 
-                      + ((hex.length == 2) ? hex : '0'+hex)
-                     );
-        //console.log(v, v.toString(16));
-      }
-      console.log('final hash', final_hash);
-      target.value = final_hash;
-      //console.log(x.map(function(c){String.fromCharCode(c)}));
-    })
-}
-
+//disable changing input field values
+$('#server-ready input[type=text]').attr('readonly', 'readonly');
 $('#id_phone_password').attr({'readonly':'readonly'}).val(generatePhonePassword());
 
 $('#data-input').change(function() {
@@ -87,12 +53,81 @@ $('#data-input').change(function() {
   $('#name').html(name);
   $('#address').html(address);
   $('#phone').html(phone);
-  generatePhonePasswordHash(
-    [phone, $('#id_phone_password').val()],
-    $('#id_phone_pw_hash').get(0));
+
+  generateHash([phone, name, $('#id_web_password').val()],
+               PUBLIC_WEBPASSWORD_SALT, 5000,
+               $('#id_phone_name_pw_hash').get(0));
+  generateHash([$('#id_web_password').val()],
+               //must match the first phase of webPasswordToSymmetricKey:
+               PUBLIC_WEBPASSWORD_SALT, 4000,
+               $('#id_webpw_hash').get(0));
+  generateHash([phone, $('#id_phone_password').val()],
+               PUBLIC_WEBPASSWORD_SALT, 1,
+               //server-side this will be re-hashed with a private salt
+               $('#id_phone_pw_hash').get(0));
+  generateHash([phone, name, address],
+               PUBLIC_WEBPASSWORD_SALT, 5000,
+               $('#id_name_address_hash').get(0));
+
+  //server-side this will be slowhash'd with a private salt
+  $('#id_new_phone').val(phone);
+  $('#id_old_phone').val(phone);
 });
 
+function homogenizeString(str) {
+  return (str
+    .toUpperCase()
+    .replace(/\W+/g,' ') //no special chars
+    .replace(/\s+/g,' ') //no extra spaces
+    .replace(/^\s+/g,'') //no leading space
+    .replace(/\s+$/g,'') //no trailing space
+    );
+};
 
+function generatePhonePassword() {
+  //TODO: make this use webcrypto and more robust (but still mnemonic)
+  return parseInt(Math.random() * 10000)
+}
+
+function generateHash(str_array, salt, iterations, target) {
+  // NOTE: this generates 'half the hash' -- with the other half
+  // generated on the server by a private salt
+  var str2encode = str_array.join('');
+  console.log('to encode', str2encode);
+  pbkdf2Cycle(new TextEncoder("utf-8").encode(str2encode),
+              //TODO: is one cycle hmac sufficient for non-reverse-engineering it?
+              //ISSUE: this must defend against a state actor trying to
+              // de-anonymize the user.
+              salt, iterations,
+              function(bits) {
+                var final_hash = bits2hex(bits);
+                console.log('final hash', final_hash);
+                target.value = final_hash;
+              });
+  return;
+
+  //TODO: SHOULD BE AN HMAC (also on server)
+
+  var str2encode = str_array.join('');
+  console.log('to encode', str2encode);
+  window.crypto.subtle.digest(
+    {name: "SHA-256"},
+    new Uint8Array(str2ab(str2encode)) //The data you want to hash as an ArrayBuffer
+  )
+    .then(function(hash){
+      //returns the hash as an ArrayBuffer
+      console.log(hash);
+      var x = new Uint8Array(hash);
+      var final_hash = bits2hex(x);
+      console.log('final hash', final_hash);
+      target.value = final_hash;
+      //console.log(x.map(function(c){String.fromCharCode(c)}));
+    })
+}
+
+//////////////////////////////////
+// TESTS
+/////////////////////////////////
 
 var sky = "foobar";
 window.crypto.subtle.digest(
@@ -128,40 +163,9 @@ window.crypto.subtle.digest(
     window.skykey = key;
   })
   .catch(function(err){
-    console.error(err);
+    console.log(err);
   });
 
-  //hmac: secret='asdf1234' add 'x', add 'y'
-  //   = afaa76dd3ae8b3467ef951147e0e8c51
-  //  digest size:16
-  //  blocksize: 64
-  //  hmac-md5
-  window.crypto.subtle.importKey(
-    "jwk", //can be "jwk" or "raw"
-    {   //this is an example jwk key, "raw" would be an ArrayBuffer
-      kty: "oct",
-      k: "Y0zt37HgOx-BY7SQjYVmrqhPkO44Ii2Jcb9yydUDPfE",
-      alg: "HS256",
-      ext: true,
-    },
-    {   //this is the algorithm options
-      name: "HMAC",
-      hash: {name: "SHA-256"}, //can be "SHA-1", "SHA-256", "SHA-384", or "SHA-512"
-      //length: 256, //optional, if you want your key length to differ from the hash function's block length
-    },
-    false, //whether the key is extractable (i.e. can be used in exportKey)
-    ["encrypt" //,"decrypt",
-      //"sign", "verify"
-    ] //can be any combination of "sign" and "verify"
-  )
-  .then(function(key){
-    //returns the symmetric key
-    console.log('cryptokeyimported', key);
-    
-  })
-  .catch(function(err){
-    console.error(err);
-  });
 </script>
   </body>
   </html>

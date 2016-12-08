@@ -51,6 +51,10 @@ Potential Attackers/Spies:
        * must be illegal to allow another to control/send vote for them
        * must be illegal to register 'twice'
        * unique VoterUnique address hash
+    * use cases:
+       * changes number (uses web form with all their info to change it)
+       * forgets password(s) -- TODO!!!!!
+         (needs to keep guard against multiple registration)
 """
 
 class District(models.Model):
@@ -68,7 +72,7 @@ class Voter(models.Model):
     #district = models.ForeignKey(District)
 
     ##slowhash > 1seconds
-    phone_name_pw_hash = models.CharField(max_length=1024, db_index=True) 
+    phone_name_pw_hash = models.CharField(max_length=1024, db_index=True)
 
     ##slowhash > 1seconds
     # for getting info that Phone Co. should not know (e.g. anon vote value)
@@ -85,14 +89,30 @@ class Voter(models.Model):
 
     @classmethod
     def hash_phone_pw2(cls, phone, pw):
+        # use the public salt because it will be potentially exposed
+        # at the registration terminals 
         myhmac = hmac.new(bytes(settings.VOTING_PUBLIC_SALT, 'utf-8'))
         myhmac.update(bytes(phone, 'utf-8'))
         myhmac.update(bytes(pw, 'utf-8'))
         return myhmac.hexdigest()
 
     @classmethod
+    def hash_phone_pw_old(cls, phone, pw):
+        return hashlib.sha256(bytes('%s%s' % (phone, pw), 'utf-8')).hexdigest()
+
+    @classmethod
     def hash_phone_pw(cls, phone, pw):
         return hashlib.sha256(bytes('%s%s' % (phone, pw), 'utf-8')).hexdigest()
+
+    @classmethod
+    def hash_registered_phonepwd(cls, webpasswd_halfhash):
+        cls.pbkdf2_cycle(webpasswd_halfhash, settings.VOTING_PRIVATE_SALT)
+
+    @classmethod
+    def pbkdf2_cycle(cls, password, salt, count):
+        dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf8'),
+                                 salt.encode('utf8'), count)
+        return [dk[i] for i in range(8)]
 
 
     base31 = 'abcdefghjkmnpqrstuvwxyz23456789'
@@ -177,8 +197,21 @@ class VoterChangeLog(models.Model):
     #store history of previous phone-hashes
     #  maybe just enough to detect some kind of fraud/suspicious activity?
     created_at = models.DateTimeField(auto_now_add=True)
-    ##fasthash: how do we avoid at-rest vulnerability here?
+    ##slowhash > 1sec
+    ## at rest: state (and hackers) may see what phones are registered
+    ## but should not be able to connect to votes
     phone_hash = models.CharField(max_length=1024, db_index=True)
+
+
+class DeleteCode(models.Model):
+    """
+    Needed Protocol:
+    1. Voter lost phone(number) or web password or phone password
+       and goes 'back' to the DMV
+    2. How does system make sure the voter's original record is deleted/invalidated
+       so they can't vote twice by lying?
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
 
 class FailedAttemptLog(models.Model):

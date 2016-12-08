@@ -1,3 +1,0 @@
-[submodule "vendor/speck"]
-	path = vendor/speck
-	url = https://github.com/inmcm/Simon_Speck_Ciphers.git
