@@ -50,16 +50,14 @@ class VoterRecord(forms.Form):
 
     def clean_new_phone(self, val=None):
         phone = val or self.cleaned_data.get('phone')
-        print ('phone1', phone)
         if not phone:
             return phone
         phone = re.sub(r'[^\d+]', '', phone)
-        print ('phone', phone)
         if len(phone) != 12:
             raise ValidationError("Please include a 10-digit phone number prefixed by +1")
         return phone
 
-    def clean(self):
+    def xclean(self):
         old_phone = self.cleaned_data.get('old_phone')
         old_index = self.cleaned_data.get('old_index')
         if old_phone or old_index \

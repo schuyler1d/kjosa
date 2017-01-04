@@ -19,6 +19,7 @@ class RegisterVoter(FormView):
             },
 
         })
+        import pdb; pdb.set_trace()
         return ctx
 
     def form_valid(self, form):
@@ -30,13 +31,12 @@ class RegisterVoter(FormView):
         voter_data = form.cleaned_data.copy()
         name_address_hash = voter_data.pop('name_address_hash')
         new_phone = voter_data.pop('new_phone')
-        old_phone = voter_data.pop('old_phone')
-        old_index = voter_data.pop('old_index')
+        old_phone = voter_data.pop('old_phone', None)
+        old_index = voter_data.pop('old_index', None)
         ##TODO:
         ## 1. add VOTING_PRIVATE_SALT to phone password
         ## 2. success url/experience (for voter to verify number)
         ## 3. old phone
-        
         v = Voter(**voter_data)
         v.save()
         return super(RegisterVoter, self).form_valid(form)

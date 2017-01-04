@@ -106,6 +106,10 @@ class Voter(models.Model):
 
     @classmethod
     def hash_registered_phonepwd(cls, webpasswd_halfhash):
+        #TODO: remove this -- i don't think private salt can work for webpasswd hash
+        # after all the client is going to encrypt it all client-side, so decryption
+        # will need to be with that key (not the one on the server
+        # it should be possible with the phone pw, though
         cls.pbkdf2_cycle(webpasswd_halfhash, settings.VOTING_PRIVATE_SALT)
 
     @classmethod
@@ -203,15 +207,15 @@ class VoterChangeLog(models.Model):
     phone_hash = models.CharField(max_length=1024, db_index=True)
 
 
-class DeleteCode(models.Model):
-    """
-    Needed Protocol:
-    1. Voter lost phone(number) or web password or phone password
-       and goes 'back' to the DMV
-    2. How does system make sure the voter's original record is deleted/invalidated
-       so they can't vote twice by lying?
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#class DeleteCode(models.Model):
+#    """
+#    Needed Protocol:
+#    1. Voter lost phone(number) or web password or phone password
+#       and goes 'back' to the DMV
+#    2. How does system make sure the voter's original record is deleted/invalidated
+#       so they can't vote twice by lying?
+#    """
+#    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
 
 class FailedAttemptLog(models.Model):
