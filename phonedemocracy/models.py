@@ -110,16 +110,31 @@ class Voter(models.Model):
         # after all the client is going to encrypt it all client-side, so decryption
         # will need to be with that key (not the one on the server
         # it should be possible with the phone pw, though
-        cls.pbkdf2_cycle(webpasswd_halfhash, settings.VOTING_PRIVATE_SALT)
+        cls.pbkdf2_cycle(webpasswd_halfhash.encode('utf8'), settings.VOTING_PRIVATE_SALT)
+
+    @classmethod
+    def webpassword_to_symmetric_key(cls, webpass):
+        """
+        Not meant to be used on the server, but useful for testing.
+        See templates/phonedemocracy/jslib.html webPasswordToSymmetricKey()
+        """
+        inner = cls.pbkdf2_cycle(webpass.encode('utf8'), settings.VOTING_PUBLIC_SALT, 4000)
+        outer = cls.pbkdf2_cycle(bytes(inner), settings.VOTING_TEMP_PUBLIC_SALT, 1000)
+        return sum([a*(2**(8*(7-i))) for i,a in enumerate(outer)])
 
     @classmethod
     def pbkdf2_cycle(cls, password, salt, count):
-        dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf8'),
+        ## password should be encoded (e.g. .encode('utf8')) first
+        if isinstance(password, str):
+            password = password.encode('utf8')
+        dk = hashlib.pbkdf2_hmac('sha256', password,
                                  salt.encode('utf8'), count)
         return [dk[i] for i in range(8)]
 
-
-    base31 = 'abcdefghjkmnpqrstuvwxyz23456789'
+    # math.log(2**32, 25) < 7 characters
+    # remove confusing chars: 1li, o0, s5
+    # along with operation chars for message: e,p,x,v
+    base25 = 'abdefghjkmnqrtuwyz2346789'
     speckparams = dict(key_size=64, block_size=32)
     @classmethod
     def decode_vote_code(cls, code):
@@ -129,10 +144,10 @@ class Voter(models.Model):
         """
         assert(len(code) == 7)
         code_checked = code.lower()
-        int31s = [cls.base31.index(c) for c in code]
+        int25s = [cls.base25.index(c) for c in code]
         codable_int = 0
         for i in range(7):
-            codable_int = codable_int + (31**i)*int31s[i]
+            codable_int = codable_int + (25**i)*int25s[i]
         return codable_int
 
     @classmethod
@@ -158,11 +173,11 @@ class Voter(models.Model):
 
     @classmethod
     def encode_vote_int(cls, codable_int):
-        char31s = []
+        char25s = []
         for i in range(7):
-            char31s.append(cls.base31[codable_int % 31])
-            codable_int = codable_int // 31
-        return ''.join(char31s)
+            char25s.append(cls.base25[codable_int % 25])
+            codable_int = codable_int // 25
+        return ''.join(char25s)
 
     @classmethod
     def decode_encrypted_vote(cls, key, code):

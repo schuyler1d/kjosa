@@ -96,8 +96,8 @@ exports = {};
               var elt = elts[a];
               if (elt.getAttribute) {
                  var cryptedVote = encodeSpeckVote(key, elt.getAttribute('data-issue'), elt.getAttribute('data-choice'));
-                 elt.innerHTML = 'e' + cryptedVote + ' password &lt;your phone pw>';
-                 elt.previousSibling.href += 'e' + cryptedVote + ' password: ';
+                 elt.innerHTML = 'c' + cryptedVote + ' password &lt;your phone pw>';
+                 elt.previousSibling.href += 'c' + cryptedVote + ' password: ';
               }
             }
 

@@ -9,19 +9,25 @@ from twilio import twiml
 from phonedemocracy.models import Voter, Issue, IssueVote
 
 def parse_vote_body(text):
+    """
+    This is a forgiving parsing that depends on these options
+    not being included in their values.
+    See base25 in models.py which excludes them
+    """
     opts = {
         'x': 'issue',
         'v': 'vote',
         'p': 'password',
-        'e': 'encrypted',
+        'c': 'encrypted',
     }
     rv = {}
     exclude = ''.join(opts.keys())
     for k,v in opts.items():
-        val = re.search(r'%s\W*(\d+)' % (k), text, re.I)
+        val = re.search(r'%s\W*([^xvpe\W]+)' % (v), text, re.I)
+        if not val:
+            val = re.search(r'%s\W*([^xvpe\W]+)' % (k), text, re.I)
         if val:
             rv[v] = re.sub(r'\W', '', val.groups()[0])
-    print(rv)
     return rv
 
 @twilio_view

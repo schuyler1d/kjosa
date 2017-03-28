@@ -73,26 +73,40 @@ function encode_vote_code(issue_id, choice_id) {
     throw Error("issue or choice id too large");
   }
   //0-255
+  //javascript wraps to negative numbers when using bit-shifting
+  // so we do multiplication and division here instead
   var iv = window.crypto.getRandomValues(new Uint8Array(1))[0];
-  var codable_int = ((iv << 24) + (issue_id << 8) + choice_id);
-  var first_16bits = codable_int >> 16;
-  return [first_16bits, codable_int - (first_16bits << 16)];
+  var codable_int = ((iv * 16777216) //= << 24
+                     + (issue_id << 8)
+                     + choice_id);
+  var first_16bits = parseInt(codable_int / 65536); //= >> 16
+  var finalvals = [first_16bits, codable_int
+                   - (first_16bits * 65536) //= << 16
+                  ];
+  return finalvals;
 }
 
 function encode_vote_int(codable_int) {
-  var base31 = 'abcdefghjkmnpqrstuvwxyz23456789';
-  var char31s = [];
+  //Math.log(2^32, 24) < 7 characters
+  var base25 = 'abdefghjkmnqrtuwyz2346789';
+  var char25s = [];
   for (var i=0; i<7; i++) {
-    char31s.push(base31[codable_int % 31]);
-    codable_int = parseInt(codable_int / 31);
+    char25s.push(base25[codable_int % 25]);
+    codable_int = parseInt(codable_int / 25);
   }
-  return char31s.join('');
+  return char25s.join('');
 }
 
-function encodeSpeckVote(key, issue_id, choice_id) {
+function encodeSpeckVote(key8, issue_id, choice_id) {
+  //key will come in as 8 8-bit numbers, 
+  // but we must consolidate this to 4 16-bit numbers for speck
+  var key4 = [];
+  for (var i=0; 4>i; i++) {
+    key4[i] = key8[2*i]*256 + key8[2*i+1];
+  }
   var text = encode_vote_code(parseInt(issue_id), parseInt(choice_id));
   var expanded = [];
-  expandKey(key, expanded); //alters expanded
+  expandKey(key4, expanded); //alters expanded
   encrypt(text, expanded); //alters text
   //same as (text[0] << 16) but doesn't loop around to negative values
   var codable_int = (text[0] * 65536) + text[1];
@@ -102,10 +116,17 @@ function encodeSpeckVote(key, issue_id, choice_id) {
 function speckTest() {
   var expanded = [];
   //each elt in key is a 16-bit number
-  var key = [0,0,0,50];
+  key = [0,0,0,50];
   expandKey(key, expanded); //alters expanded
   var text = [0,0];
   encrypt(text, expanded); //alters text
+  console.log('first key', text, text[0] == 4565, text[1] == 26980)
+  key = [50,0,0,50];
+  expanded = [];
+  expandKey(key, expanded);
+  var text2 = [0,0];
+  encrypt(text2, expanded);
+  console.log('second key', text2);
   return text;
   //will be: [4565, 26980] which is same as python's output
 }
