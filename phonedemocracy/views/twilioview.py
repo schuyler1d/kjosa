@@ -46,6 +46,9 @@ def receive_sms_vote(request):
     body = parse_vote_body(request.POST.get('Body', ''))
 
     message = "That doesn't seem like a well-formed vote."
+    ### TODO:
+    ### 1. handle encrypted vote
+    ### 2. avoid timing attacks -- maybe just do hash + vote and encrypt for a queue
     if phone_num \
        and 'issue' in body \
        and 'password' in body \

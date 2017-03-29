@@ -93,7 +93,38 @@ class VotingTestCase(TestCase):
         v1 = self.v1
         key = Voter.webpassword_to_symmetric_key(v1.webpassword)
         code = Voter.encode_encrypted_vote(key=key,
-                                           issue_id=23, choice_id=3)
+                                           issue_id=1, choice_id=2)
+        res = self.c.post('/twilio/receive_text', {
+            'From': v1.phone,
+            'Body': 'c{} p{}'.format(code, v1.phonepassword)
+        })
+
+    def test_badphonepw(self):
+        v1 = self.v1
+        badkey = Voter.webpassword_to_symmetric_key('junkjunk')
+        code = Voter.encode_encrypted_vote(key=badkey,
+                                           issue_id=2, choice_id=1)
+        res = self.c.post('/twilio/receive_text', {
+            'From': v1.phone,
+            'Body': 'c{} p{}'.format(code, v1.phonepassword)
+        })
+
+    def test_badwebpw(self):
+        v1 = self.v1
+        key = Voter.webpassword_to_symmetric_key(v1.webpassword)
+        code = Voter.encode_encrypted_vote(key=key,
+                                           issue_id=2, choice_id=1)
+        assert(v1.phonepassword != '6666')
+        res = self.c.post('/twilio/receive_text', {
+            'From': v1.phone,
+            'Body': 'c{} p{}'.format(code, '6666')
+        })
+
+    def test_changevote(self):
+        v1 = self.v1
+        key = Voter.webpassword_to_symmetric_key(v1.webpassword)
+        code = Voter.encode_encrypted_vote(key=key,
+                                           issue_id=1, choice_id=1)
         res = self.c.post('/twilio/receive_text', {
             'From': v1.phone,
             'Body': 'c{} p{}'.format(code, v1.phonepassword)
