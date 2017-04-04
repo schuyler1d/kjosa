@@ -21,7 +21,6 @@ class EncryptionTestCase(TestCase):
 
     def test_speck_cipher(self):
         """symmetric encryption for texted votes"""
-        
         enc = Voter.encode_encrypted_vote(key=50,
                                           issue_id=23, choice_id=3)
         dec = Voter.decode_encrypted_vote(key=50, code=enc)

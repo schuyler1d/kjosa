@@ -47,18 +47,23 @@ def receive_sms_vote(request):
 
     message = "That doesn't seem like a well-formed vote."
     ### TODO:
-    ### 1. handle encrypted vote
-    ### 2. avoid timing attacks -- maybe just do hash + vote and encrypt for a queue
+    ### 1. avoid timing attacks -- maybe just do hash + vote and encrypt for a queue
     if phone_num \
-       and 'issue' in body \
-       and 'password' in body \
-       and 'vote' in body:
-        iss = Issue.objects.filter(pk=body['issue']).first()
-        if iss:
-            print('issue phone', iss, phone_num)
-            voter_hash = Voter.hash_phone_pw(phone_num, body['password'])
-            print('voter_hash', voter_hash)
-            if Voter.objects.filter(phone_pw_hash=voter_hash):
+       and (set(['issue', 'password', 'vote']).issubset(body.keys()) \
+            or 'encrypted' in body):
+        voter_hash = Voter.hash_phone_pw(phone_num, body['password'])
+        ## TODO: Here, maybe just encrypt voter_hash + encrypted  and send to queue
+        ## The rest below here would be in the queue processing code
+        voter = Voter.objects.filter(phone_pw_hash=voter_hash).values('webpw_hash').first()
+        if voter:
+            if 'encrypted' in body:
+                webkey = Voter.inner_webhash_to_key(voter['webpw_hash'] , usebase64=True)
+                issue_id, vote = Voter.decode_encrypted_vote(webkey, code=body['encrypted'])
+                body['issue'] = issue_id
+                body['vote'] = vote
+
+            iss = Issue.objects.filter(pk=body['issue']).first()
+            if iss:
                 existing_vote = IssueVote.objects.filter(issue=iss,
                                                          voter_hash=voter_hash)
                 if existing_vote:

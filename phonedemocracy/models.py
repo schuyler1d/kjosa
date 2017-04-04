@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import hmac
 import random
@@ -72,10 +73,13 @@ class Voter(models.Model):
     #district = models.ForeignKey(District)
 
     ##slowhash > 1seconds
+    #BLOB
     phone_name_pw_hash = models.CharField(max_length=1024, db_index=True)
 
     ##slowhash > 1seconds
     # for getting info that Phone Co. should not know (e.g. anon vote value)
+    # https://stackoverflow.com/questions/4915397/django-blob-model-field
+    #BLOB
     webpw_hash = models.CharField(max_length=1024, db_index=True)
 
     # When people change their phones online, we increment this
@@ -85,6 +89,7 @@ class Voter(models.Model):
     #for verifying a phone vote
     #currently sha256 (but no seed, and not hmac)
     #TODO: add those.
+    #BLOB
     phone_pw_hash = models.CharField(max_length=1024, db_index=True)
 
     @classmethod
@@ -119,7 +124,12 @@ class Voter(models.Model):
         See templates/phonedemocracy/jslib.html webPasswordToSymmetricKey()
         """
         inner = cls.pbkdf2_cycle(webpass.encode('utf8'), settings.VOTING_PUBLIC_SALT, 4000)
-        outer = cls.pbkdf2_cycle(bytes(inner), settings.VOTING_TEMP_PUBLIC_SALT, 1000)
+        return cls.inner_webhash_to_key(bytes(inner), usebase64=False)
+
+    @classmethod
+    def inner_webhash_to_key(cls, webpw_hash, usebase64=True):
+        webpw_inner_bytes = base64.decodestring(webpw_hash) if usebase64 else webpw_hash
+        outer = cls.pbkdf2_cycle(webpw_inner_bytes, settings.VOTING_TEMP_PUBLIC_SALT, 1000)
         return sum([a*(2**(8*(7-i))) for i,a in enumerate(outer)])
 
     @classmethod
@@ -219,6 +229,7 @@ class VoterChangeLog(models.Model):
     ##slowhash > 1sec
     ## at rest: state (and hackers) may see what phones are registered
     ## but should not be able to connect to votes
+    #BLOB
     phone_hash = models.CharField(max_length=1024, db_index=True)
 
 
@@ -237,6 +248,7 @@ class FailedAttemptLog(models.Model):
     #store history of failed phone logins (wrong passwords, bad vote codes)
     created_at = models.DateTimeField(auto_now_add=True)
     ##fasthash: how do we avoid at-rest vulnerability here?
+    #BLOB
     phone_hash = models.CharField(max_length=1024, db_index=True)
     failure_code = models.PositiveSmallIntegerField(choices=(
         (1, 'bad phone/password match'),
@@ -266,6 +278,7 @@ class Issue(models.Model):
 
 
 class IssueVote(models.Model):
+    #BLOB
     voter_hash = models.CharField(max_length=1024, db_index=True)
     #TODO: can we anonymize this somehow? -- maybe the hash of the voter hash+issue id
     #   but that would be computationally easy to test with the at-rest data
