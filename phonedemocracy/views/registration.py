@@ -19,7 +19,6 @@ class RegisterVoter(FormView):
             },
 
         })
-        import pdb; pdb.set_trace()
         return ctx
 
     def form_valid(self, form):

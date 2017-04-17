@@ -100,7 +100,7 @@ function generateHash(str_array, salt, iterations, target) {
               // de-anonymize the user.
               salt, iterations,
               function(bits) {
-                var final_hash = bits2hex(bits);
+                var final_hash = bits2b64(bits);
                 console.log('final hash', final_hash);
                 target.value = final_hash;
               });
@@ -118,7 +118,7 @@ function generateHash(str_array, salt, iterations, target) {
       //returns the hash as an ArrayBuffer
       console.log(hash);
       var x = new Uint8Array(hash);
-      var final_hash = bits2hex(x);
+      var final_hash = bits2b64(x);
       console.log('final hash', final_hash);
       target.value = final_hash;
       //console.log(x.map(function(c){String.fromCharCode(c)}));
