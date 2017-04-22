@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 
 class VoterCreation(forms.Form):
@@ -27,7 +29,7 @@ class VoterRecord(forms.Form):
 
     ##fasthash (because server is doing it)
     #for verifying a phone vote
-    phone_pw_hash = forms.CharField(max_length=1024)
+    phone_pw_hash_inner = forms.CharField(max_length=1024)
 
     ###
     # VoterChangeLog fields
@@ -49,7 +51,7 @@ class VoterRecord(forms.Form):
     name_address_hash = forms.CharField()
 
     def clean_new_phone(self, val=None):
-        phone = val or self.cleaned_data.get('phone')
+        phone = val or self.cleaned_data.get('new_phone')
         if not phone:
             return phone
         phone = re.sub(r'[^\d+]', '', phone)

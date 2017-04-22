@@ -93,21 +93,24 @@ class Voter(models.Model):
     phone_pw_hash = models.CharField(max_length=1024, db_index=True)
 
     @classmethod
-    def hash_phone_pw2(cls, phone, pw):
-        # use the public salt because it will be potentially exposed
-        # at the registration terminals 
-        myhmac = hmac.new(bytes(settings.VOTING_PUBLIC_SALT, 'utf-8'))
-        myhmac.update(bytes(phone, 'utf-8'))
-        myhmac.update(bytes(pw, 'utf-8'))
-        return myhmac.hexdigest()
-
-    @classmethod
-    def hash_phone_pw_old(cls, phone, pw):
-        return hashlib.sha256(bytes('%s%s' % (phone, pw), 'utf-8')).hexdigest()
+    def b64(self, ary):
+        return base64.encodestring(bytes(ary)).strip().decode('ascii')
 
     @classmethod
     def hash_phone_pw(cls, phone, pw):
-        return hashlib.sha256(bytes('%s%s' % (phone, pw), 'utf-8')).hexdigest()
+        # use the public salt because it will be potentially exposed
+        # at the registration terminals, but private salt will be used to wrap inner
+        inner = cls.b64(cls.pbkdf2_cycle(
+            ''.join([phone, pw]),
+            settings.VOTING_PUBLIC_SALT, 1))
+        return cls.hash_phone_pw_outer(phone, inner)
+
+    @classmethod
+    def hash_phone_pw_outer(cls, phone, inner_hash):
+        myhmac = hmac.new(bytes(settings.VOTING_PRIVATE_SALT, 'utf-8'))
+        myhmac.update(bytes(phone, 'utf-8'))
+        myhmac.update(bytes(inner_hash, 'utf-8'))
+        return myhmac.hexdigest()
 
     @classmethod
     def hash_registered_phonepwd(cls, webpasswd_halfhash):
@@ -128,7 +131,7 @@ class Voter(models.Model):
 
     @classmethod
     def inner_webhash_to_key(cls, webpw_hash, usebase64=True):
-        webpw_inner_bytes = base64.decodestring(webpw_hash) if usebase64 else webpw_hash
+        webpw_inner_bytes = base64.decodestring(webpw_hash.encode('utf-8')) if usebase64 else webpw_hash
         outer = cls.pbkdf2_cycle(webpw_inner_bytes, settings.VOTING_TEMP_PUBLIC_SALT, 1000)
         return sum([a*(2**(8*(7-i))) for i,a in enumerate(outer)])
 

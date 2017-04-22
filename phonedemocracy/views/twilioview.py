@@ -40,7 +40,6 @@ def receive_sms_vote(request):
     # * sms back the user with some verification code?
     #   if they chose #1 let them know they can do so more anonymously if
     #     they also have access to the web
-    print (request.POST)
     r = twiml.Response()
     phone_num = request.POST.get('From','')
     body = parse_vote_body(request.POST.get('Body', ''))

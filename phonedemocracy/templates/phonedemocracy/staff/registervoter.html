@@ -64,7 +64,7 @@ $('#data-input').change(function() {
   generateHash([phone, $('#id_phone_password').val()],
                PUBLIC_WEBPASSWORD_SALT, 1,
                //server-side this will be re-hashed with a private salt
-               $('#id_phone_pw_hash').get(0));
+               $('#id_phone_pw_hash_inner').get(0));
   generateHash([phone, name, address],
                PUBLIC_WEBPASSWORD_SALT, 5000,
                $('#id_name_address_hash').get(0));

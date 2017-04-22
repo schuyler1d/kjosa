@@ -17,7 +17,6 @@ class RegisterVoter(FormView):
             'settings': {
                 'VOTING_PUBLIC_SALT': settings.VOTING_PUBLIC_SALT,
             },
-
         })
         return ctx
 
@@ -32,6 +31,9 @@ class RegisterVoter(FormView):
         new_phone = voter_data.pop('new_phone')
         old_phone = voter_data.pop('old_phone', None)
         old_index = voter_data.pop('old_index', None)
+        phone_pw_hash_inner = voter_data.pop('phone_pw_hash_inner', None)
+        voter_data['phone_pw_hash'] = Voter.hash_phone_pw_outer(new_phone,
+                                                                phone_pw_hash_inner)
         ##TODO:
         ## 1. add VOTING_PRIVATE_SALT to phone password
         ## 2. success url/experience (for voter to verify number)

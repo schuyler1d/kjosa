@@ -1,20 +1,50 @@
+import base64
+
 from django.contrib.auth.models import User
 from django.test import Client, TestCase, override_settings
 from speck import SpeckCipher
 
-from phonedemocracy.models import Voter
+from phonedemocracy.models import Voter, IssueVote
 from phonedemocracy.views.twilioview import parse_vote_body
 
 TEST_SETTINGS = {
     'VOTING_PUBLIC_SALT': 'public salt forever',
     'VOTING_TEMP_PUBLIC_SALT': 'a public salt today',
     'VOTING_PRIVATE_SALT': 'private salt',
+    'DJANGO_TWILIO_FORGERY_PROTECTION': False
 }
 
 class VoterInfo:
     def __init__(self, **kwargs):
         for k,v in kwargs.items():
             setattr(self, k, v)
+
+    def postdata(self):
+        from django.conf import settings
+        def b64(ary):
+            return base64.encodestring(bytes(ary)).strip().decode('ascii')
+
+        rv = {
+            'phone_name_pw_hash': b64(Voter.pbkdf2_cycle(''.join([
+                self.phone, self.name, self.webpassword
+            ]), settings.VOTING_PUBLIC_SALT, 5000)),
+            'webpw_hash': b64(Voter.pbkdf2_cycle(
+                self.webpassword,
+                settings.VOTING_PUBLIC_SALT, 4000)),
+            'phone_pw_hash_inner': b64(Voter.pbkdf2_cycle(''.join([
+                self.phone, self.phonepassword
+            ]), settings.VOTING_PUBLIC_SALT, 1)),
+            'new_phone': self.phone,
+            'name_address_hash': b64(Voter.pbkdf2_cycle(''.join([
+                self.phone, self.name, self.address
+            ]), settings.VOTING_PUBLIC_SALT, 5000)),
+        }
+        return rv
+    """
+    postdata returns:
+{'webpw_hash': [180, 137, 129, 20, 181, 113, 147, 135], 'name_address_hash': [119, 176, 13, 160, 104, 66, 81, 104], 'phone_pw_hash': [102, 91, 9, 24, 164, 107, 159, 221], 'new_phone': '+10005551234', 'phone_name_pw_hash': [70, 247, 50, 139, 149, 89, 155, 93]}
+    """
+
 
 @override_settings(**TEST_SETTINGS)
 class EncryptionTestCase(TestCase):
@@ -65,31 +95,15 @@ class VotingTestCase(TestCase):
         """
         self.admin_client.login(username='admintest', password=self.admin_password)
 
-        from django.conf import settings
-        v1 = self.v1
-
-        postdata = {
-            'phone_name_pw_hash': Voter.pbkdf2_cycle(''.join([
-                v1.phone, v1.name, v1.webpassword
-            ]), settings.VOTING_PUBLIC_SALT, 5000),
-            'webpw_hash': Voter.pbkdf2_cycle(
-                v1.webpassword,
-                settings.VOTING_PUBLIC_SALT, 4000),
-            'phone_pw_hash': Voter.pbkdf2_cycle(''.join([
-                v1.phone, v1.phonepassword
-            ]), settings.VOTING_PUBLIC_SALT, 1),
-            'new_phone': v1.phone,
-            'name_address_hash': Voter.pbkdf2_cycle(''.join([
-                v1.phone, v1.name, v1.address
-            ]), settings.VOTING_PUBLIC_SALT, 5000),
-        }
-        result = self.admin_client.post('/official/newvoter', postdata)
-
+        result = self.admin_client.post('/official/newvoter', self.v1.postdata())
         self.assertEqual(result.status_code, 302)
         self.assertEqual(result.get('location'), '/thanks/')
         
     def test_voting_voter(self):
         v1 = self.v1
+        self.admin_client.login(username='admintest', password=self.admin_password)
+        self.admin_client.post('/official/newvoter', v1.postdata())
+
         key = Voter.webpassword_to_symmetric_key(v1.webpassword)
         code = Voter.encode_encrypted_vote(key=key,
                                            issue_id=1, choice_id=2)
@@ -97,6 +111,7 @@ class VotingTestCase(TestCase):
             'From': v1.phone,
             'Body': 'c{} p{}'.format(code, v1.phonepassword)
         })
+        self.assertEqual(IssueVote.objects.count(), 1)
 
     def test_badphonepw(self):
         v1 = self.v1
