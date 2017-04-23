@@ -72,11 +72,11 @@ class Voter(models.Model):
     #should district be obscured further inside one of the hashes?
     #district = models.ForeignKey(District)
 
-    ##slowhash > 1seconds
+    ##slowhash
     #BLOB
     phone_name_pw_hash = models.CharField(max_length=1024, db_index=True)
 
-    ##slowhash > 1seconds
+    ##slowhash
     # for getting info that Phone Co. should not know (e.g. anon vote value)
     # https://stackoverflow.com/questions/4915397/django-blob-model-field
     #BLOB
@@ -146,8 +146,10 @@ class Voter(models.Model):
 
     # math.log(2**32, 25) < 7 characters
     # remove confusing chars: 1li, o0, s5
-    # along with operation chars for message: e,p,x,v
+    # along with operation chars for message: x,v,p,c
     base25 = 'abdefghjkmnqrtuwyz2346789'
+    assert(len(base25) == 25)
+
     speckparams = dict(key_size=64, block_size=32)
     @classmethod
     def decode_vote_code(cls, code):
@@ -159,7 +161,7 @@ class Voter(models.Model):
         code_checked = code.lower()
         int25s = [cls.base25.index(c) for c in code]
         codable_int = 0
-        for i in range(7):
+        for i in range(len(code)):
             codable_int = codable_int + (25**i)*int25s[i]
         return codable_int
 
@@ -229,7 +231,7 @@ class VoterChangeLog(models.Model):
     #store history of previous phone-hashes
     #  maybe just enough to detect some kind of fraud/suspicious activity?
     created_at = models.DateTimeField(auto_now_add=True)
-    ##slowhash > 1sec
+    ##slowhash
     ## at rest: state (and hackers) may see what phones are registered
     ## but should not be able to connect to votes
     #BLOB

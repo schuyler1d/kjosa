@@ -3,7 +3,7 @@ import re
 from django.shortcuts import render, get_object_or_404
 from django.conf import settings
 
-from phonedemocracy.models import Issue, District
+from phonedemocracy.models import Issue, District, Voter
 
 def sms_uri(request):
     user_agent = request.META['HTTP_USER_AGENT']
@@ -29,6 +29,7 @@ def list_issues(request, district):
         'settings': {
             'VOTING_PUBLIC_SALT': settings.VOTING_PUBLIC_SALT,
             'VOTING_TEMP_PUBLIC_SALT': settings.VOTING_TEMP_PUBLIC_SALT,
+            'BASE25': Voter.base25,
             },
     })
 

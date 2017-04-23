@@ -8,24 +8,28 @@ from twilio import twiml
 
 from phonedemocracy.models import Voter, Issue, IssueVote
 
+VOTE_PARSE_CMDS = {
+    'x': 'issue',
+    'v': 'vote',
+    'p': 'password',
+    'c': 'encrypted',
+}
+CMD_CHARS = ''.join(VOTE_PARSE_CMDS.keys())
+for c in VOTE_PARSE_CMDS.keys():
+    assert(c not in Voter.base25)
+
 def parse_vote_body(text):
     """
     This is a forgiving parsing that depends on these options
     not being included in their values.
     See base25 in models.py which excludes them
     """
-    opts = {
-        'x': 'issue',
-        'v': 'vote',
-        'p': 'password',
-        'c': 'encrypted',
-    }
     rv = {}
-    exclude = ''.join(opts.keys())
-    for k,v in opts.items():
-        val = re.search(r'%s\W*([^xvpe\W]+)' % (v), text, re.I)
+    exclude = CMD_CHARS
+    for k,v in VOTE_PARSE_CMDS.items():
+        val = re.search(r'%s\W*([^%s\W]+)' % (v, exclude), text, re.I)
         if not val:
-            val = re.search(r'%s\W*([^xvpe\W]+)' % (k), text, re.I)
+            val = re.search(r'%s\W*([^%s\W]+)' % (k, exclude), text, re.I)
         if val:
             rv[v] = re.sub(r'\W', '', val.groups()[0])
     return rv
@@ -66,7 +70,6 @@ def receive_sms_vote(request):
                 existing_vote = IssueVote.objects.filter(issue=iss,
                                                          voter_hash=voter_hash)
                 if existing_vote:
-                    print('existing')
                     existing_vote.update(procon=int(body['vote']))
                 else:
                     IssueVote.objects.create(

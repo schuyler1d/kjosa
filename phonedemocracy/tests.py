@@ -101,9 +101,8 @@ class VotingTestCase(TestCase):
         
     def test_voting_voter(self):
         v1 = self.v1
-        self.admin_client.login(username='admintest', password=self.admin_password)
-        self.admin_client.post('/official/newvoter', v1.postdata())
-
+        pre = IssueVote.objects.count()
+        self.test_register_voter()
         key = Voter.webpassword_to_symmetric_key(v1.webpassword)
         code = Voter.encode_encrypted_vote(key=key,
                                            issue_id=1, choice_id=2)
@@ -111,10 +110,12 @@ class VotingTestCase(TestCase):
             'From': v1.phone,
             'Body': 'c{} p{}'.format(code, v1.phonepassword)
         })
-        self.assertEqual(IssueVote.objects.count(), 1)
+        self.assertEqual(IssueVote.objects.count(), pre+1)
 
     def test_badphonepw(self):
         v1 = self.v1
+        pre = IssueVote.objects.count()
+        self.test_register_voter()
         badkey = Voter.webpassword_to_symmetric_key('junkjunk')
         code = Voter.encode_encrypted_vote(key=badkey,
                                            issue_id=2, choice_id=1)
@@ -122,9 +123,12 @@ class VotingTestCase(TestCase):
             'From': v1.phone,
             'Body': 'c{} p{}'.format(code, v1.phonepassword)
         })
+        self.assertEqual(IssueVote.objects.count(), pre)
 
     def test_badwebpw(self):
         v1 = self.v1
+        pre = IssueVote.objects.count()
+        self.test_register_voter()
         key = Voter.webpassword_to_symmetric_key(v1.webpassword)
         code = Voter.encode_encrypted_vote(key=key,
                                            issue_id=2, choice_id=1)
@@ -133,16 +137,27 @@ class VotingTestCase(TestCase):
             'From': v1.phone,
             'Body': 'c{} p{}'.format(code, '6666')
         })
+        self.assertEqual(IssueVote.objects.count(), pre)
 
     def test_changevote(self):
         v1 = self.v1
+        pre = IssueVote.objects.count()
+        self.test_register_voter()
         key = Voter.webpassword_to_symmetric_key(v1.webpassword)
-        code = Voter.encode_encrypted_vote(key=key,
-                                           issue_id=1, choice_id=1)
+        code1 = Voter.encode_encrypted_vote(key=key,
+                                            issue_id=1, choice_id=1)
+        code2 = Voter.encode_encrypted_vote(key=key,
+                                            issue_id=1, choice_id=2)
         res = self.c.post('/twilio/receive_text', {
             'From': v1.phone,
-            'Body': 'c{} p{}'.format(code, v1.phonepassword)
+            'Body': 'c{} p{}'.format(code1, v1.phonepassword)
         })
+        res2 = self.c.post('/twilio/receive_text', {
+            'From': v1.phone,
+            'Body': 'c{} p{}'.format(code2, v1.phonepassword)
+        })
+        self.assertEqual(IssueVote.objects.count(), pre+1)
+        self.assertEqual(IssueVote.objects.first().procon, 2)
 
 
 @override_settings(**TEST_SETTINGS)
