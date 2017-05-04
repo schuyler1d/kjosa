@@ -87,8 +87,6 @@ class Voter(models.Model):
 
     ##fasthash (because server is doing it)
     #for verifying a phone vote
-    #currently sha256 (but no seed, and not hmac)
-    #TODO: add those.
     #BLOB
     phone_pw_hash = models.CharField(max_length=1024, db_index=True)
 
@@ -168,6 +166,7 @@ class Voter(models.Model):
     @classmethod
     def decode_vote_int(cls, codable_int):
         iv = codable_int >> 24
+        assert(iv == 0)
         codable_int = codable_int - (iv << 24)
         issue_id = codable_int >> 8
         choice_id = codable_int - (issue_id << 8)
@@ -182,7 +181,7 @@ class Voter(models.Model):
         """
         assert(issue_id < 65536)
         assert(choice_id < 256)
-        iv = random.randint(0,255)
+        iv = 0 #random.randint(0,255)
         codable_int = ((iv << 24) + (issue_id << 8) + choice_id)
         return codable_int
 
@@ -248,17 +247,40 @@ class VoterChangeLog(models.Model):
 #    """
 #    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-
 class FailedAttemptLog(models.Model):
+
+    BAD_PHONEPW = 1
+    BAD_IV = 2
+    BAD_ISSUE = 3
+
     #store history of failed phone logins (wrong passwords, bad vote codes)
     created_at = models.DateTimeField(auto_now_add=True)
     ##fasthash: how do we avoid at-rest vulnerability here?
     #BLOB
     phone_hash = models.CharField(max_length=1024, db_index=True)
-    failure_code = models.PositiveSmallIntegerField(choices=(
-        (1, 'bad phone/password match'),
-        (2, 'bad vote code'),
+    failure = models.PositiveSmallIntegerField(choices=(
+        (BAD_PHONEPW, 'bad phone/password match'),
+        (BAD_IV, 'bad vote decode (bad iv or other assertion error)'),
+        (BAD_ISSUE, 'bad vote code (no issue)'),
     ))
+
+    @classmethod
+    def hashphone(cls, phonenum):
+        """
+        if this kept the whole hash, then it would be laughably vulnerable
+        Instead what we allow is a statistical analysis by the data collectors
+        without identification. 1billion phone numbers (roughly) should have
+        statistical equanimity from 2^20 ~ (16^5), but we should test this
+        also, against aberations related to area codes like 646, etc
+        """
+        h = hashlib.sha256(phonenum.encode('utf8'))
+        h.update(settings.VOTING_PRIVATE_SALT.encode('utf8'))
+        return h.hexdigest()[:5]
+
+    @classmethod
+    def log(cls, phonenum, failure):
+        return cls.objects.create(failure=failure,
+                                  phone_hash=cls.hashphone(phonenum))
 
 
 class Issue(models.Model):

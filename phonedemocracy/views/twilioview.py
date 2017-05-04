@@ -6,11 +6,12 @@ from django.shortcuts import render
 from django_twilio.decorators import twilio_view
 from twilio import twiml
 
-from phonedemocracy.models import Voter, Issue, IssueVote
+from phonedemocracy.models import FailedAttemptLog, Issue, IssueVote, Voter
+
 
 VOTE_PARSE_CMDS = {
-    'x': 'issue',
-    'v': 'vote',
+    'x': 'issue_unencrypted',
+    'v': 'vote_unencrypted',
     'p': 'password',
     'c': 'encrypted',
 }
@@ -48,39 +49,46 @@ def receive_sms_vote(request):
     phone_num = request.POST.get('From','')
     body = parse_vote_body(request.POST.get('Body', ''))
 
-    message = "That doesn't seem like a well-formed vote."
+    message = "We received your sms voting message."
     ### TODO:
     ### 1. avoid timing attacks -- maybe just do hash + vote and encrypt for a queue
     if phone_num \
-       and (set(['issue', 'password', 'vote']).issubset(body.keys()) \
-            or 'encrypted' in body):
+       and (set(['encrypted', 'password']).issubset(body.keys())):
         voter_hash = Voter.hash_phone_pw(phone_num, body['password'])
         ## TODO: Here, maybe just encrypt voter_hash + encrypted  and send to queue
         ## The rest below here would be in the queue processing code
         voter = Voter.objects.filter(phone_pw_hash=voter_hash).values('webpw_hash').first()
-        if voter:
+        if not voter:
+            FailedAttemptLog.log(phone_num, FailedAttemptLog.BAD_PHONEPW)
+        else:
             if 'encrypted' in body:
                 webkey = Voter.inner_webhash_to_key(voter['webpw_hash'] , usebase64=True)
-                issue_id, vote = Voter.decode_encrypted_vote(webkey, code=body['encrypted'])
-                body['issue'] = issue_id
-                body['vote'] = vote
-
-            iss = Issue.objects.filter(pk=body['issue']).first()
-            if iss:
-                existing_vote = IssueVote.objects.filter(issue=iss,
-                                                         voter_hash=voter_hash)
-                if existing_vote:
-                    existing_vote.update(procon=int(body['vote']))
+                try:
+                    issue_id, vote = Voter.decode_encrypted_vote(webkey, code=body['encrypted'])
+                    body['issue'] = issue_id
+                    body['vote'] = vote
+                except AssertionError:
+                    #bad (possibly imposter) message
+                    # TODO: should we still send message?
+                    # If we do, then real voter is alerted to imposter
+                    #    but then voter that gave (under durress) a fake webpasswd
+                    FailedAttemptLog.log(phone_num, FailedAttemptLog.BAD_IV)
+            if 'issue' in body:
+                iss = Issue.objects.filter(pk=body['issue']).first()
+                if not iss:
+                    FailedAttemptLog.log(phone_num, FailedAttemptLog.BAD_ISSUE)
                 else:
-                    IssueVote.objects.create(
-                        issue=iss,
-                        voter_hash=voter_hash,
-                        procon=int(body['vote']),
-                        shouldvote = 0,
-                        validation_code='x')
-                message = ("Thanks for voting! "
-                           "We suggest you delete your sms history. "
-                           "-sky")
+                    existing_vote = IssueVote.objects.filter(issue=iss,
+                                                             voter_hash=voter_hash)
+                    if existing_vote:
+                        existing_vote.update(procon=int(body['vote']))
+                    else:
+                        IssueVote.objects.create(
+                            issue=iss,
+                            voter_hash=voter_hash,
+                            procon=int(body['vote']),
+                            shouldvote = 0,
+                            validation_code='x')
     r.message(message)
     return r
 """

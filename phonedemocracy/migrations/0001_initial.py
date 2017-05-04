@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('phone_hash', models.CharField(db_index=True, max_length=1024)),
-                ('failure_code', models.PositiveSmallIntegerField(choices=[(1, 'bad phone/password match'), (2, 'bad vote code')])),
+                ('failure', models.PositiveSmallIntegerField(choices=[(1, 'bad phone/password match'), (2, 'bad vote code')])),
             ],
         ),
         migrations.CreateModel(

@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase, override_settings
 from speck import SpeckCipher
 
-from phonedemocracy.models import Voter, IssueVote
+from phonedemocracy.models import FailedAttemptLog, IssueVote, Voter
 from phonedemocracy.views.twilioview import parse_vote_body
 
 TEST_SETTINGS = {
@@ -40,10 +40,6 @@ class VoterInfo:
             ]), settings.VOTING_PUBLIC_SALT, 5000)),
         }
         return rv
-    """
-    postdata returns:
-{'webpw_hash': [180, 137, 129, 20, 181, 113, 147, 135], 'name_address_hash': [119, 176, 13, 160, 104, 66, 81, 104], 'phone_pw_hash': [102, 91, 9, 24, 164, 107, 159, 221], 'new_phone': '+10005551234', 'phone_name_pw_hash': [70, 247, 50, 139, 149, 89, 155, 93]}
-    """
 
 
 @override_settings(**TEST_SETTINGS)
@@ -112,7 +108,24 @@ class VotingTestCase(TestCase):
         })
         self.assertEqual(IssueVote.objects.count(), pre+1)
 
-    def test_badphonepw(self):
+    def test_badwebpw(self):
+        v1 = self.v1
+        pre = IssueVote.objects.count()
+        self.test_register_voter()
+        badkey = Voter.webpassword_to_symmetric_key('xjunkjunk')
+        code = Voter.encode_encrypted_vote(key=badkey,
+                                           issue_id=2, choice_id=1)
+        res = self.c.post('/twilio/receive_text', {
+            'From': v1.phone,
+            'Body': 'c{} p{}'.format(code, v1.phonepassword)
+        })
+
+        self.assertEqual(FailedAttemptLog.objects.filter(failure=FailedAttemptLog.BAD_IV).count(),
+                         1)
+        self.assertEqual(IssueVote.objects.count(), pre)
+
+    def test_luckybadwebpw(self):
+        """This tests when the symmetric key luckily yields an iv=0 (1/16 chance)"""
         v1 = self.v1
         pre = IssueVote.objects.count()
         self.test_register_voter()
@@ -123,9 +136,11 @@ class VotingTestCase(TestCase):
             'From': v1.phone,
             'Body': 'c{} p{}'.format(code, v1.phonepassword)
         })
+        self.assertEqual(FailedAttemptLog.objects.filter(failure=FailedAttemptLog.BAD_ISSUE).count(),
+                         1)
         self.assertEqual(IssueVote.objects.count(), pre)
 
-    def test_badwebpw(self):
+    def test_badphonepw(self):
         v1 = self.v1
         pre = IssueVote.objects.count()
         self.test_register_voter()
@@ -137,6 +152,8 @@ class VotingTestCase(TestCase):
             'From': v1.phone,
             'Body': 'c{} p{}'.format(code, '6666')
         })
+        self.assertEqual(FailedAttemptLog.objects.filter(failure=FailedAttemptLog.BAD_PHONEPW).count(),
+                         1)
         self.assertEqual(IssueVote.objects.count(), pre)
 
     def test_changevote(self):
