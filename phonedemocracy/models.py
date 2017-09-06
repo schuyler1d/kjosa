@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import os
 import random
 import uuid
 
@@ -82,13 +83,14 @@ class Voter(models.Model):
     #BLOB
     webpw_hash = models.CharField(max_length=1024, db_index=True)
 
-    # When people change their phones online, we increment this
-    index = models.IntegerField(default=0)
-
     ##fasthash (because server is doing it)
     #for verifying a phone vote
     #BLOB
     phone_pw_hash = models.CharField(max_length=1024, db_index=True)
+
+    # hash(invalidation_token + phone_pw + phone) will be
+    # the invalidation record stored for the public voter record
+    invalidation_token = models.CharField(max_length=1024, db_index=True)
 
     @classmethod
     def b64(self, ary):
@@ -218,12 +220,31 @@ class Voter(models.Model):
 class VoterUnique(models.Model):
     """
     Canonical verified voter, but this needs to be
-    encrypted a bunch of times by a bunch of trusted people's
-    private keys that are unlikely to conspire
     """
     #to avoid sequential analysis
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name_address_hash = models.TextField()
+    invalidation_token_hash = models.CharField(max_length=1024)
+
+    @classmethod
+    def generate_invalidation_token(cls):
+        return base64.encodestring(os.urandom(64)).strip().decode('ascii')
+
+
+class InvalidToken(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    invalidation_token_hash = models.CharField(max_length=1024)
+
+    @classmethod
+    def generate_invalidation_token_hash(cls, invalidation_token_base64,
+                                         phone,
+                                         phone_pw_hash_outer):
+        # TODO: make this a SLOW hash
+        h = hashlib.sha256(invalidation_token_base64.encode('utf8'))
+        h.update(settings.VOTING_PRIVATE_SALT.encode('utf8'))
+        h.update(phone.encode('utf8'))
+        h.update(phone_pw_hash_outer.encode('utf8'))
+        return h.hexdigest()
 
 
 class VoterChangeLog(models.Model):
@@ -252,6 +273,7 @@ class FailedAttemptLog(models.Model):
     BAD_PHONEPW = 1
     BAD_IV = 2
     BAD_ISSUE = 3
+    INVALID_TOKEN = 4
 
     #store history of failed phone logins (wrong passwords, bad vote codes)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -6,7 +6,7 @@ from django.shortcuts import render
 from django_twilio.decorators import twilio_view
 from twilio import twiml
 
-from phonedemocracy.models import FailedAttemptLog, Issue, IssueVote, Voter
+from phonedemocracy.models import FailedAttemptLog, InvalidToken, Issue, IssueVote, Voter
 
 
 VOTE_PARSE_CMDS = {
@@ -50,45 +50,68 @@ def receive_sms_vote(request):
     body = parse_vote_body(request.POST.get('Body', ''))
 
     message = "We received your sms voting message."
-    ### TODO:
-    ### 1. avoid timing attacks -- maybe just do hash + vote and encrypt for a queue
+    ### TODO: Avoid timing attacks -- maybe just do hash + vote and encrypt for a queue
+    ### timing conditions:
+    ### * successful vs. unsuccessful search for voter
+    ### * successful vs. unsuccessful search for invalidation token
+    ### * failed attempt log db write vs.
+    ### * vote rewrite, vs. vote create
     if phone_num \
        and (set(['encrypted', 'password']).issubset(body.keys())):
         voter_hash = Voter.hash_phone_pw(phone_num, body['password'])
         ## TODO: Here, maybe just encrypt voter_hash + encrypted  and send to queue
         ## The rest below here would be in the queue processing code
-        voter = Voter.objects.filter(phone_pw_hash=voter_hash).values('webpw_hash').first()
+        voter = Voter.objects.filter(phone_pw_hash=voter_hash).values('webpw_hash',
+                                                                      'invalidation_token').first()
         if not voter:
             FailedAttemptLog.log(phone_num, FailedAttemptLog.BAD_PHONEPW)
         else:
-            if 'encrypted' in body:
-                webkey = Voter.inner_webhash_to_key(voter['webpw_hash'] , usebase64=True)
-                try:
-                    issue_id, vote = Voter.decode_encrypted_vote(webkey, code=body['encrypted'])
-                    body['issue'] = issue_id
-                    body['vote'] = vote
-                except AssertionError:
-                    #bad (possibly imposter) message
-                    # TODO: should we still send message?
-                    # If we do, then real voter is alerted to imposter
-                    #    but then voter that gave (under durress) a fake webpasswd
-                    FailedAttemptLog.log(phone_num, FailedAttemptLog.BAD_IV)
-            if 'issue' in body:
-                iss = Issue.objects.filter(pk=body['issue']).first()
-                if not iss:
-                    FailedAttemptLog.log(phone_num, FailedAttemptLog.BAD_ISSUE)
-                else:
-                    existing_vote = IssueVote.objects.filter(issue=iss,
-                                                             voter_hash=voter_hash)
-                    if existing_vote:
-                        existing_vote.update(procon=int(body['vote']))
-                    else:
-                        IssueVote.objects.create(
-                            issue=iss,
-                            voter_hash=voter_hash,
-                            procon=int(body['vote']),
-                            shouldvote = 0,
-                            validation_code='x')
+            # Test invalidation_token against InvalidTokens
+            token_hash = InvalidToken.generate_invalidation_token_hash(voter['invalidation_token'],
+                                                                       phone_num,
+                                                                       voter_hash)
+            if InvalidToken.objects.filter(invalidation_token_hash=token_hash):
+                FailedAttemptLog.log(phone_num, FailedAttemptLog.INVALID_TOKEN)
+                # It should be ok to message the user since they clearly used a
+                # previous legitimate phone+web password with the same phone number
+                # but it has been invalidated.
+                message = ("You have tried to vote with an invalidated phone and password"
+                           " combination that has been superceded by a new one."
+                           " Please use your new authentication credentials."
+                           " If you did not create a new set of passwords, then someone"
+                           " is trying to commit voter fraud."
+                           " Please contact a voting security office.")
+                # in which case they will 're-authenticate' and the fraudster's access
+                # will be removed, and hopefully investigated
+            else:
+                if 'encrypted' in body:
+                    webkey = Voter.inner_webhash_to_key(voter['webpw_hash'] , usebase64=True)
+                    try:
+                        issue_id, vote = Voter.decode_encrypted_vote(webkey, code=body['encrypted'])
+                        body['issue'] = issue_id
+                        body['vote'] = vote
+                    except AssertionError:
+                        #bad (possibly imposter) message
+                        # TODO: should we still send message?
+                        # If we do, then real voter is alerted to imposter
+                        #    but then voter that gave (under durress) a fake webpasswd
+                        FailedAttemptLog.log(phone_num, FailedAttemptLog.BAD_IV)
+                    if 'issue' in body:
+                        iss = Issue.objects.filter(pk=body['issue']).first()
+                        if not iss:
+                            FailedAttemptLog.log(phone_num, FailedAttemptLog.BAD_ISSUE)
+                        else:
+                            existing_vote = IssueVote.objects.filter(issue=iss,
+                                                                     voter_hash=voter_hash)
+                            if existing_vote:
+                                existing_vote.update(procon=int(body['vote']))
+                            else:
+                                IssueVote.objects.create(
+                                    issue=iss,
+                                    voter_hash=voter_hash,
+                                    procon=int(body['vote']),
+                                    shouldvote = 0,
+                                    validation_code='x')
     r.message(message)
     return r
 """
