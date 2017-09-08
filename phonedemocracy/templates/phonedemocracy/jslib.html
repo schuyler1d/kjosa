@@ -32,7 +32,6 @@ function pbkdf2Cycle(password, salt, count, callback) {
                         salt.encode('utf8'), count)
     return [dk[i] for i in range(8)]
    */
-
   window.crypto.subtle.importKey(
     "raw", //only "raw" is allowed
     //window.crypto.getRandomValues(new Uint8Array(16)), //your password
@@ -40,7 +39,7 @@ function pbkdf2Cycle(password, salt, count, callback) {
     {
         name: "PBKDF2",
     },
-    true, //whether the key is extractable (i.e. can be used in exportKey)
+    false, //is key extractable? This must be false or Chrome won't work
     ["deriveKey", "deriveBits"] //can be any combination of "deriveKey" and "deriveBits"
   )
   .then(function(key){
