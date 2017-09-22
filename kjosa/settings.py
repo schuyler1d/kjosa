@@ -85,7 +85,7 @@ DATABASES = {
 
 if os.environ.get('DB_HOSTNAME'):
     DATABASES['default'] = {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.environ['DB_NAME'],
             'USER': os.environ['DB_USERNAME'],
             'PASSWORD': os.environ['DB_PASSWORD'],
@@ -132,11 +132,25 @@ USE_TZ = True
 
 STATIC_URL = os.environ.get('STATIC_URL', '/static/')
 STATIC_ROOT = '%s/static_build' % BASE_DIR
+FORCE_SCRIPT_NAME = os.environ.get('FORCE_SCRIPT_NAME')
 
 #this needs to be a result that comes out of
 # bcrypt.genSaltSync(10)
-VOTING_PUBLIC_SALT = None
 
+TWILIO_PHONENUMBER_FRIENDLY = os.environ.get('TWILIO_PHONENUMBER_FRIENDLY')
+TWILIO_PHONENUMBER = os.environ.get('TWILIO_PHONENUMBER')
 
-from local_settings import *
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+
+# What we use to hmac the web password
+#this needs to be a result that comes out of
+VOTING_PUBLIC_SALT = os.environ.get('VOTING_PUBLIC_SALT')
+VOTING_TEMP_PUBLIC_SALT = os.environ.get('VOTING_TEMP_PUBLIC_SALT')
+
+# What we use to hash on the server-side
+VOTING_PRIVATE_SALT = os.environ.get('VOTING_PRIVATE_SALT')
+
+if not os.environ.get('AWS_ACCESS_KEY_ID'):
+    from local_settings import *
 
