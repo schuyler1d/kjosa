@@ -70,7 +70,8 @@ function encode_vote_code(issue_id, choice_id) {
   //0-255
   //javascript wraps to negative numbers when using bit-shifting
   // so we do multiplication and division here instead
-  var iv = 0; //window.crypto.getRandomValues(new Uint8Array(1))[0];
+  //var iv = 0; Random IV so the same message doesn't encrypt the same way
+  var iv = window.crypto.getRandomValues(new Uint8Array(1))[0];
   var codable_int = ((iv * 16777216) //= << 24
                      + (issue_id << 8)
                      + choice_id);

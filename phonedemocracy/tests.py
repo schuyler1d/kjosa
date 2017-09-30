@@ -120,8 +120,9 @@ class VotingTestCase(TestCase):
             'Body': 'c{} p{}'.format(code, v1.phonepassword)
         })
 
-        self.assertEqual(FailedAttemptLog.objects.filter(failure=FailedAttemptLog.BAD_IV).count(),
-                         1)
+        # We don't want BAD_IVs to fail anymore since then the same message is distinguishable
+        #self.assertEqual(FailedAttemptLog.objects.filter(failure=FailedAttemptLog.BAD_IV).count(), 1)
+        # no additional vote should be registered
         self.assertEqual(IssueVote.objects.count(), pre)
 
     def test_luckybadwebpw(self):

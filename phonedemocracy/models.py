@@ -168,7 +168,9 @@ class Voter(models.Model):
     @classmethod
     def decode_vote_int(cls, codable_int):
         iv = codable_int >> 24
-        assert(iv == 0)
+        # iv should be allowed to be random, so that the same
+        # vote can be sent without it being distinguishable
+        # assert(iv == 0)
         codable_int = codable_int - (iv << 24)
         issue_id = codable_int >> 8
         choice_id = codable_int - (issue_id << 8)
@@ -183,7 +185,8 @@ class Voter(models.Model):
         """
         assert(issue_id < 65536)
         assert(choice_id < 256)
-        iv = 0 #random.randint(0,255)
+        # Random IV so the same message doesn't encrypt the same way
+        iv = random.randint(0,255)
         codable_int = ((iv << 24) + (issue_id << 8) + choice_id)
         return codable_int
 
@@ -271,7 +274,7 @@ class VoterChangeLog(models.Model):
 class FailedAttemptLog(models.Model):
 
     BAD_PHONEPW = 1
-    BAD_IV = 2
+    BAD_IV = 2 # this should never happen, since we accept all IVs now
     BAD_ISSUE = 3
     INVALID_TOKEN = 4
 
